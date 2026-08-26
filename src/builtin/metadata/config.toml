@@ -1,0 +1,45 @@
+name = "config"
+category = "system"
+description = "SCV create와 agent 기본 설정을 조회하거나 변경합니다."
+usage = "scv config [show [--json] | set <key> <value> [--dry-run]]"
+builtin = true
+runtime = "builtin"
+platforms = ["windows", "linux", "macos"]
+risk = "write"
+network = false
+supports_dry_run = true
+effects = ["reads or updates the local SCV config.toml file"]
+
+[[arguments]]
+name = "action"
+required = false
+description = "show 또는 set"
+default = "show"
+
+[[arguments]]
+name = "key/value"
+required = false
+description = "set에서 변경할 설정 키와 값"
+
+[[options]]
+long = "--json"
+description = "show 결과를 기계 판독 가능한 JSON 객체로 출력"
+
+[[options]]
+long = "--dry-run"
+description = "set 결과만 표시하고 config 파일을 변경하지 않음"
+
+[[notes]]
+text = "agent, model, effort 단축 키와 create.agent, create.model, create.effort, agents.<agent>.model/effort 키를 지원합니다."
+
+[[examples]]
+command = "scv config show"
+
+[[examples]]
+command = "scv config set agent codex"
+
+[[examples]]
+command = "scv config set model gpt-5.6-sol"
+
+[[examples]]
+command = "scv config set effort high --dry-run"

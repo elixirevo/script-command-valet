@@ -1,0 +1,49 @@
+mod add;
+mod apply;
+mod config;
+mod create;
+mod info;
+mod list;
+mod paths;
+mod remove;
+mod rollback;
+mod status;
+mod sync;
+
+use std::ffi::OsString;
+use std::io::{self, Write};
+
+use serde::Serialize;
+
+use crate::metadata::Registry;
+use crate::paths::AppPaths;
+
+pub fn run(
+    command: &str,
+    arguments: &[OsString],
+    paths: &AppPaths,
+    registry: &Registry,
+) -> Result<i32, String> {
+    match command {
+        "add" => add::run(arguments, paths, registry),
+        "apply" => apply::run(arguments, paths),
+        "config" => config::run(arguments, paths),
+        "create" => create::run(arguments, paths, registry),
+        "rm" => remove::run(arguments, paths, registry),
+        "list" => list::run(arguments, registry),
+        "info" => info::run(arguments, registry),
+        "paths" => paths::run(arguments, paths),
+        "rollback" => rollback::run(arguments, paths),
+        "status" => status::run(arguments, paths),
+        "sync" => sync::run(arguments, paths),
+        _ => Err(format!("builtin '{command}' is not implemented")),
+    }
+}
+
+fn write_json<T: Serialize + ?Sized>(command: &str, value: &T) -> Result<(), String> {
+    let stdout = io::stdout();
+    let mut output = stdout.lock();
+    serde_json::to_writer_pretty(&mut output, value)
+        .map_err(|error| format!("{command}: could not serialize JSON: {error}"))?;
+    writeln!(output).map_err(|error| format!("{command}: could not write JSON: {error}"))
+}

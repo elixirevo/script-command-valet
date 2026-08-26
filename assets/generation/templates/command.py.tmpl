@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+import sys
+
+# Place this entry inside generated/__COMMAND__/ and declare it in metadata.toml.
+# Keep essential targets positional and configuration as named options.
+# If this command prompts, support --no-input and never prompt when stdin is not a TTY.
+# Keep the package self-contained and never embed credentials or absolute user paths.
+
+
+def main(args: list[str]) -> int:
+    if args:
+        print(f"scv __COMMAND__: unexpected argument '{args[0]}'", file=sys.stderr)
+        print(
+            "Try 'scv __COMMAND__ --help' for more information.",
+            file=sys.stderr,
+        )
+        return 2
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
+

@@ -1,0 +1,18 @@
+param(
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]] $Arguments
+)
+
+$ErrorActionPreference = "Stop"
+
+# Place this entry inside generated/__COMMAND__/ and declare it in metadata.toml.
+# Keep essential targets positional and configuration as named options.
+# If this command prompts, support --no-input and never prompt when stdin is not a TTY.
+# Keep the package self-contained and never embed credentials or absolute user paths.
+
+if ($Arguments.Count -gt 0) {
+    [Console]::Error.WriteLine("scv __COMMAND__: unexpected argument '$($Arguments[0])'")
+    [Console]::Error.WriteLine("Try 'scv __COMMAND__ --help' for more information.")
+    exit 2
+}
+

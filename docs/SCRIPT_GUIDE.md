@@ -1,0 +1,317 @@
+# SCV Platform and Command Development Guide
+
+This document is the canonical contract for developing the SCV platform and command
+packages. If the implementation, templates, embedded prompts, Skill, or README
+conflicts with this guide, update them together using this guide as the authority.
+
+## 1. Product boundary and public interface
+
+- The only public executable and namespace is `scv`, or `scv.exe` on Windows.
+- Releases, development code, documentation, and environment variables must not
+  expose another executable name or compatibility alias.
+- Dispatch, help, `add`, `rm`, `list`, `info`, `config`, `create`, `apply`, `status`,
+  `rollback`, `paths`, and `sync` are native Rust builtins.
+- External commands exist only in the user's `SCV_HOME/commands/<command>/` packages.
+  The product repository does not contain a user command library.
+- Builtin metadata lives in `src/builtin/metadata/`; external metadata lives in each
+  package's `metadata.toml`.
+- The product repository must not contain `bin/`, a root `commands/`, or a root
+  `scv.toml`. Use `cargo run -- <arguments>` for development.
+- The canonical invocation is `scv <command> [arguments]`.
+
+SCV is a pre-release greenfield application. Do not implement legacy data paths,
+environment variables, flat metadata, migration commands, or deprecation aliases.
+
+## 2. Source and execution boundary
+
+An installed SCV never executes code directly from its Git source.
+
+```text
+~/.scv/commands/                 portable source
+          ↓ full validation
+<data>/scv/activations/<id>/     immutable machine-local copy
+          ↓ atomic current switch
+scv <command>                    current activation only
+```
+
+- The source manifest is `~/.scv/scv.toml`.
+- Source commands live in `~/.scv/commands/<command>/`.
+- Only `apply`, `add`, `create`, `rm`, and a validated `sync pull` create an
+  activation.
+- An activation records the package copy, manifest, and SHA-256 library and package
+  digests.
+- SCV fully copies and revalidates a new activation before atomically replacing the
+  `current` file.
+- Validation or apply failure leaves the previous activation active.
+- Product development has no exception that dispatches source directly.
+
+Follow `docs/STORAGE_ARCHITECTURE.md` and `docs/SYNC_ARCHITECTURE.md` for detailed
+path and synchronization contracts.
+
+## 3. Command package structure
+
+```text
+~/.scv/commands/<command>/
+├── metadata.toml
+├── <implementation entry>
+└── <required package resources>
+```
+
+- The package directory and metadata `name` must match.
+- Command, category, and option names use kebab-case.
+- Names begin with an ASCII letter or digit and contain only ASCII letters, digits,
+  `.`, `_`, and `-`.
+- `help` is a reserved command name.
+- An implementation `entry` is a direct-child file in the package. It must not
+  contain `/`, `\`, an absolute path, a drive prefix, `..`, or a symlink.
+- A package contains every resource required at runtime.
+- Reject symlinks, sockets, devices, special files, and packages that exceed file
+  count, size, or depth limits.
+
+## 4. Metadata contract
+
+The minimal external command shape is:
+
+```toml
+name = "gh-org-clone"
+category = "github"
+description = "Clone repositories from a GitHub organization."
+usage = "scv gh-org-clone <organization> [--directory <path>]"
+builtin = false
+risk = "write"
+network = true
+supports_dry_run = true
+effects = [
+  "creates local directories",
+  "downloads Git repositories",
+]
+
+[[implementations]]
+runtime = "bash"
+platforms = ["linux", "macos"]
+entry = "main.sh"
+
+[[arguments]]
+name = "organization"
+required = true
+description = "GitHub organization name"
+
+[[options]]
+short = "-d"
+long = "--directory"
+value = "<path>"
+description = "Destination directory for clones"
+default = "Current directory"
+
+[[options]]
+long = "--dry-run"
+description = "Show planned changes without modifying anything"
+
+[[examples]]
+command = "scv gh-org-clone project --directory ./backup"
+```
+
+External commands do not use top-level `runtime`, `platforms`, or `entry`. They
+declare the execution contract only through one or more `[[implementations]]`
+entries.
+
+Builtins use `builtin = true`, `runtime = "builtin"`, and top-level `platforms`.
+They have neither `entry` nor `[[implementations]]`.
+
+### Detailed help
+
+- `usage` begins with `scv <command>`.
+- Keep only essential targets positional, normally one and at most two.
+- Model paths, formats, configuration, and behavioral changes as long options.
+- Frequently used options may have an unambiguous short alias.
+- Every `[[options]]` entry contains at least one of `short` or `long`.
+- A value-taking option uses `value = "<value>"`. A boolean flag omits `value`.
+- Do not declare `-h` or `--help`; the SCV core adds both.
+- Keep `[[notes]]` and `[[examples]]` aligned with the implementation.
+- Source executables do not contain a `show_help` function, detailed Usage block, or
+  help-option branch.
+
+The SCV core renders the same metadata for:
+
+```bash
+scv <command> -h
+scv <command> --help
+scv list --json
+scv info <command> --json
+```
+
+Do not mix progress messages or explanatory text into JSON stdout.
+
+## 5. Runtimes and platforms
+
+| Runtime | SCV execution | Requirement |
+|---|---|---|
+| `bash` | `bash <entry>` | Bash, normally on Linux and macOS |
+| `node` | `node <entry>` | Node.js |
+| `python` | Unix `python3`, Windows `python` | Python |
+| `pwsh` | `pwsh <entry>` | PowerShell 7+ |
+| `binary` | Execute entry directly | Native binary for the target OS and CPU |
+
+- Exactly one implementation must resolve for the current OS.
+- Group platforms only when they share the same runtime and entry.
+- Never assume Bash or WSL for a Windows implementation.
+- Do not register raw Rust or Go source as `binary`.
+- Shebangs, extensions, and Unix executable bits are not part of the dispatch
+  contract.
+- Source validation runs a non-executing syntax check when the runtime is available.
+  It explicitly reports `skipped` when the runtime is unavailable.
+
+## 6. Input, interaction, and errors
+
+- Use positional arguments for required targets, options for configuration, and flags
+  for booleans.
+- Do not expose the same value as both positional and named input.
+- Unknown options, missing values, and invalid input go to stderr and return a
+  non-zero status.
+- End input errors with `Try 'scv <command> --help' for more information.`
+- Send successful results to stdout and warnings or errors to stderr.
+- Quote paths and user-controlled values.
+- Every interactive workflow has a fully specified non-interactive invocation.
+- Prompt only when stdin is a TTY.
+- A prompt-capable command implements and declares `--no-input`.
+- `--no-input` is not consent. Destructive behavior requires a separate `--yes`.
+- Do not add compatibility input aliases.
+
+When `supports_dry_run = true`, declare `--dry-run` in metadata. It must make no
+local or remote change and must print the exact targets and the no-change result.
+
+## 7. Safety metadata
+
+- `read`: reads state without creating a local or remote change.
+- `write`: creates or modifies local or remote state.
+- `destructive`: deletes, overwrites, prunes, or may cause a hard-to-reverse change.
+- Record the highest risk across every possible branch.
+- Set `network = true` for any network access, including read-only access.
+- Describe observable outcomes in `effects`; do not use vague text such as `runs a
+  script`.
+
+Safety metadata is not authorization. Dry-run, preview, confirmation, and external
+system approval remain separate behavioral contracts.
+
+## 8. Language-specific source rules
+
+- Manage the source starting points used by `scv create` under
+  `assets/generation/templates/` and materialize them into the temporary generation
+  workspace.
+- Bash uses `#!/usr/bin/env bash` and `set -euo pipefail`.
+- Node.js, Python, and PowerShell follow the input and error conventions in their
+  generation templates.
+- Do not hardcode a home directory, repository absolute path, or credential.
+- If a package command needs machine-local state, use the environment supplied by
+  SCV.
+
+SCV provides these variables at execution time:
+
+- `SCV_HOME`
+- `SCV_DATA_DIR`
+- `SCV_CONFIG_DIR`
+- `SCV_CACHE_DIR`
+- `SCV_ACTIVE_DIR`
+- `SCV_COMMAND_PACKAGE_DIR`
+- `SCV_COMMAND_METADATA`
+
+## 9. Management commands
+
+### `scv add`
+
+- Do not modify the input source file.
+- Create the implementation and metadata under `~/.scv/commands/<name>/`.
+- Validate the package, then apply the complete source as an activation.
+- Automation specifies category, description, risk, network, dry-run support, and
+  every effect, and uses `--no-input`.
+
+### `scv rm`
+
+- A builtin cannot be removed.
+- `--dry-run` prints only the source package and apply plan.
+- Actual removal requires TTY confirmation or `--yes`.
+- Reapply the complete source after removal.
+
+### `scv apply/status/rollback`
+
+- `apply --dry-run` validates source only.
+- `apply` creates a new activation.
+- `status` compares the source and active digests and reports pending state.
+- `rollback` revalidates an existing activation and atomically switches `current`.
+
+### `scv sync`
+
+- Delegate authentication and repository operations to system Git or `gh`. Do not
+  treat remote source as executable before validation and approval.
+- Follow `docs/SYNC_ARCHITECTURE.md` for the detailed pull/push trust boundary and
+  recovery contract.
+
+## 10. Agent-powered generation
+
+`scv create` is an optional layer that turns natural language into a persistent
+command package.
+
+- Keep deployed resources under `assets/generation/`.
+- Embedded prompts must be complete without external `AGENTS.md`, `CLAUDE.md`, Skill,
+  or `docs/` content.
+- SCV injects the prompt explicitly and does not depend on provider file discovery.
+- The adapter uses a temporary workspace as its working directory and receives no SCV
+  source or activation path. SCV consumes only results under `generated/`.
+- Never execute generated output. Install it only after validator and user approval.
+- Model and provider options cannot alter SCV's sandbox, approval, network, or other
+  security boundaries.
+
+Follow `docs/CREATE_ARCHITECTURE.md` for the detailed contract.
+
+## 11. Installation and path changes
+
+When paths, activation, shell PATH, installers, or platform implementations change,
+update these in the same change:
+
+- `docs/SCRIPT_GUIDE.md`
+- the relevant architecture document;
+- affected builtin metadata and `assets/generation/` resources;
+- the canonical Skill and agent entrypoint;
+- `AGENTS.md` and README; and
+- the macOS, Linux, and Windows CI and release matrix.
+
+The standalone executable defaults to `~/.local/bin/scv` on macOS and Linux and
+`%LOCALAPPDATA%\Programs\SCV\bin\scv.exe` on Windows. Package managers own their
+installation paths. Follow `docs/INSTALLATION.md` for details.
+
+## 12. Verification and completion criteria
+
+Core changes:
+
+```bash
+cargo fmt --check
+cargo test
+cargo clippy --all-targets --all-features -- -D warnings
+```
+
+Command changes:
+
+```bash
+cargo run -- --help
+cargo run -- list --json
+cargo run -- info <command> --json
+cargo run -- <command> -h
+cargo run -- <command> --help
+cargo run -- <command> <valid-input>
+cargo run -- <command> <invalid-input>
+```
+
+Additional completion criteria:
+
+- Package name, metadata, runtime, platform, and entry agree.
+- Every implementation entry is a regular, non-symlink file inside the package.
+- Risk, network, effects, and dry-run metadata match the maximum actual effect.
+- Verify `--no-input`, consent, and non-TTY behavior for prompt workflows.
+- Exercise paths containing spaces and the current-platform implementation.
+- Verify that source changes are not executed before activation.
+- Verify that invalid source does not change the current activation.
+- Verify rollback and local-bare-Git sync end to end.
+- Verify repeated installer runs in isolated paths without duplicate PATH entries.
+- Run the native `scv` or `scv.exe` in Linux, macOS, and Windows CI.
+- Default CI does not use live credentials, mutate networks, or make paid agent
+  requests.

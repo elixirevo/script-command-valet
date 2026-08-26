@@ -1,0 +1,4 @@
+interface:
+  display_name: "SCV Development"
+  short_description: "Develop and review the SCV product"
+  default_prompt: "Use $scv-development to implement and verify a change to the SCV product repository while preserving its platform and security boundaries."

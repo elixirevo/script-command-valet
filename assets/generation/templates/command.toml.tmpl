@@ -1,0 +1,44 @@
+# Save as generated/__COMMAND__/metadata.toml.
+name = "__COMMAND__"
+category = "__CATEGORY__"
+description = "__DESCRIPTION__"
+usage = "scv __COMMAND__ [options]"
+builtin = false
+risk = "__RISK__"
+network = __NETWORK__
+supports_dry_run = __SUPPORTS_DRY_RUN__
+effects = ["__EFFECT__"]
+
+[[implementations]]
+runtime = "__RUNTIME__"
+platforms = ["__PLATFORM__"]
+entry = "__ENTRY__"
+
+# Optional core target example (remove # and replace values only when needed):
+# [[arguments]]
+# name = "target"
+# required = false
+# description = "Target to process"
+# default = "current directory"
+#
+# Optional value-taking option example:
+# [[options]]
+# short = "-d"
+# long = "--directory"
+# value = "<path>"
+# description = "Directory to process"
+# default = "current directory"
+#
+# Optional boolean flag example:
+# [[options]]
+# long = "--all"
+# description = "Include all entries"
+#
+# Every [[options]] entry requires short or long (preferably long). There is no option name field.
+# Keep only one or two essential targets positional; model configuration and behavior as options.
+# A prompting command must declare --no-input and support the same workflow without prompts.
+# network and supports_dry_run are unquoted TOML booleans: true or false.
+
+[[examples]]
+command = "scv __COMMAND__"
+

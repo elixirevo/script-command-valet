@@ -1,0 +1,82 @@
+name = "create"
+category = "system"
+description = "자연어 요청으로 검증된 영구 SCV command package를 생성합니다."
+usage = "scv create <description> [--name <command>] [--agent <agent>] [--model <model>] [--effort <level>] [--yes] [--no-input]"
+builtin = true
+runtime = "builtin"
+platforms = ["windows", "linux", "macos"]
+risk = "destructive"
+network = true
+supports_dry_run = false
+effects = [
+  "invokes one locally installed coding-agent CLI using its existing authentication",
+  "creates and removes an isolated temporary generation workspace",
+  "stores one validated SCV command package in the Git source after confirmation",
+  "creates and activates a validated machine-local command snapshot",
+  "prunes old machine-local activations beyond the retention limit",
+  "replaces an existing user command when --force is used",
+]
+
+[[arguments]]
+name = "description"
+required = true
+description = "영구 command로 만들 자연어 요구사항"
+
+[[options]]
+short = "-n"
+long = "--name"
+value = "<command>"
+description = "생성할 command 이름을 고정"
+
+[[options]]
+short = "-a"
+long = "--agent"
+value = "<codex|claude>"
+description = "사용할 로컬 coding-agent adapter"
+default = "config 또는 codex"
+
+[[options]]
+short = "-m"
+long = "--model"
+value = "<model>"
+description = "agent에 그대로 전달할 model 이름"
+
+[[options]]
+short = "-e"
+long = "--effort"
+value = "<low|medium|high|xhigh|max>"
+description = "agent가 지원하는 공통 reasoning effort"
+
+[[options]]
+long = "--agent-option"
+value = "<key=value>"
+description = "Codex provider 고유 config; 여러 번 지정 가능"
+
+[[options]]
+short = "-f"
+long = "--force"
+description = "동일한 사용자 command가 존재하면 승인 후 교체"
+
+[[options]]
+short = "-y"
+long = "--yes"
+description = "검증된 package 설치 확인을 생략"
+
+[[options]]
+long = "--no-input"
+description = "질문을 금지; package 설치에는 --yes도 필요"
+
+[[notes]]
+text = "agent는 임시 workspace에만 쓰며, SCV validator와 installer만 command library를 변경합니다."
+
+[[notes]]
+text = "stdin이 터미널이 아니면 자동으로 입력을 금지합니다."
+
+[[examples]]
+command = "scv create \"디렉터리별 용량을 큰 순서대로 보여주는 명령을 만들어줘\""
+
+[[examples]]
+command = "scv create \"JSON 파일을 정렬해줘\" --name json-sort --agent codex --model gpt-5.6-sol --effort high"
+
+[[examples]]
+command = "scv create \"현재 경로의 파일 수를 세어줘\" --agent claude --yes --no-input"

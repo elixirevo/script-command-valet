@@ -1,0 +1,26 @@
+name = "info"
+category = "system"
+description = "명령의 도움말과 런타임 정보를 표시합니다."
+usage = "scv info <command> [--json]"
+builtin = true
+runtime = "builtin"
+platforms = ["windows", "linux", "macos"]
+risk = "read"
+network = false
+supports_dry_run = false
+effects = ["reads local SCV command metadata"]
+
+[[arguments]]
+name = "command"
+required = true
+description = "확인할 명령 이름"
+
+[[options]]
+long = "--json"
+description = "기계 판독 가능한 JSON 객체로 출력"
+
+[[examples]]
+command = "scv info gh-org-clone"
+
+[[examples]]
+command = "scv info gh-org-clone --json"

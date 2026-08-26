@@ -1,0 +1,184 @@
+# SCV — Script Command Valet
+
+SCV is a cross-platform personal command manager and command-building AI unit. It
+exposes Bash, Node.js, Python, PowerShell, and native command packages through one
+`scv <command>` namespace on macOS, Linux, and Windows.
+
+The native Rust core provides dispatch, metadata help, safety discovery, immutable
+activations, Git synchronization, and optional agent-powered package generation.
+AI is never required to run or manage an existing command library.
+
+## Architecture
+
+SCV separates the portable Git source from machine-local executable state.
+
+```text
+~/.scv/                         user-owned Git source
+├── .git/
+├── scv.toml
+└── commands/<command>/
+    ├── metadata.toml
+    └── <implementation files>
+
+             scv apply / validated management operation
+                              ↓
+
+<platform data>/scv/          machine-local runtime state
+├── activations/<id>/
+│   ├── manifest.toml
+│   └── commands/
+├── current
+└── state/
+```
+
+SCV never dispatches code directly from the installed user's `~/.scv/commands`
+working tree. It validates every package, copies the full library into a new
+immutable activation, verifies the copy and its SHA-256 digest, and then atomically
+updates `current`. A failed validation leaves the previous activation active.
+
+See [storage architecture](docs/STORAGE_ARCHITECTURE.md),
+[sync architecture](docs/SYNC_ARCHITECTURE.md), and
+[installation](docs/INSTALLATION.md) for the complete contracts.
+
+## Command package
+
+Every external command is a flat package under `~/.scv/commands/<command>/`:
+
+```toml
+name = "path-size"
+category = "filesystem"
+description = "Show the size of a path."
+usage = "scv path-size <path>"
+builtin = false
+risk = "read"
+network = false
+supports_dry_run = false
+effects = ["reads local path metadata", "prints a path size"]
+
+[[implementations]]
+runtime = "bash"
+platforms = ["linux", "macos"]
+entry = "unix.sh"
+
+[[implementations]]
+runtime = "pwsh"
+platforms = ["windows"]
+entry = "windows.ps1"
+```
+
+Metadata owns detailed help and the execution contract. SCV chooses exactly one
+implementation for the current OS; it does not infer runtime from an extension,
+shebang, or executable bit.
+
+## Build and development
+
+```bash
+cargo build
+cargo run -- --help
+cargo run -- list --json
+cargo run -- paths --json
+cargo run -- status --json
+```
+
+Required core checks:
+
+```bash
+cargo fmt --check
+cargo test
+cargo clippy --all-targets --all-features -- -D warnings
+```
+
+The CI matrix runs these checks and the native dispatcher on macOS, Linux, and
+Windows. Tagged releases produce native artifacts for:
+
+- macOS Intel and Apple Silicon;
+- Linux x86_64 and arm64; and
+- Windows x86_64.
+
+## Installation
+
+Standalone Unix installation defaults to `~/.local/bin/scv`:
+
+```bash
+./install.sh --binary ./target/release/scv
+```
+
+Windows defaults to `%LOCALAPPDATA%\Programs\SCV\bin\scv.exe`:
+
+```powershell
+./install.ps1 -BinaryPath ./target/release/scv.exe
+```
+
+See [installation and release](docs/INSTALLATION.md) for download installation,
+custom locations, PATH behavior, package-manager boundaries, and release artifacts.
+
+## Paths
+
+Use `scv paths --json` to inspect the resolved paths. Supported overrides are:
+
+- `SCV_HOME`
+- `SCV_DATA_DIR`
+- `SCV_CONFIG_DIR`
+- `SCV_CACHE_DIR`
+- `SCV_INSTALL_DIR` for installers
+
+There are no older executable names, environment-variable aliases, flat metadata
+formats, or data migration commands. SCV is a pre-release greenfield application.
+
+## Core workflows
+
+```bash
+# Discover commands and safety contracts
+scv list --json
+scv info create --json
+
+# Register a local implementation, update source, and activate it
+scv add ./tool.py \
+  --name tool \
+  --category utility \
+  --description "Run my tool" \
+  --risk read \
+  --network false \
+  --supports-dry-run false \
+  --effect "reads local input" \
+  --no-input
+
+# Validate manual changes and create an activation
+scv apply --dry-run
+scv apply
+scv status --json
+scv rollback --dry-run
+scv rollback
+
+# Synchronize the Git-backed source
+scv sync status --json
+scv sync pull --yes --no-input
+scv sync push --dry-run
+scv sync push --yes --no-input
+```
+
+`sync pull` fetches into an isolated Git worktree, validates the remote source, and
+shows a change summary before approval. Only a fast-forward is accepted. Git and
+`gh` retain ownership of credentials; SCV does not store tokens.
+
+## Agent-powered creation
+
+```bash
+scv create "Show directory sizes in descending order" --agent codex
+scv create "Sort a JSON file" --name json-sort --agent codex --effort high
+scv create "Count the number of files" --agent claude --yes --no-input
+```
+
+`scv create` explicitly injects the complete provider-neutral contract embedded from
+`assets/generation/` and starts the selected adapter in an isolated temporary
+workspace. SCV consumes only the package under `generated/`, validates it, asks for
+installation consent, writes it to the Git source, and creates a new activation.
+See [create architecture](docs/CREATE_ARCHITECTURE.md) for adapter and validation
+boundaries.
+
+## Development contract
+
+Read [docs/SCRIPT_GUIDE.md](docs/SCRIPT_GUIDE.md) before changing platform behavior
+or command packages. It is the canonical development guide. Changes to platform
+behavior must keep the guide, relevant architecture documents, affected builtin
+metadata, embedded generation assets, Skill, `AGENTS.md`, README, and CI aligned.

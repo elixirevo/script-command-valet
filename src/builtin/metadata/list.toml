@@ -1,0 +1,29 @@
+name = "list"
+category = "system"
+description = "등록된 명령을 논리적 카테고리별로 표시합니다."
+usage = "scv list [--all] [--json]"
+builtin = true
+runtime = "builtin"
+platforms = ["windows", "linux", "macos"]
+risk = "read"
+network = false
+supports_dry_run = false
+effects = ["reads local SCV command metadata"]
+
+[[options]]
+short = "-a"
+long = "--all"
+description = "현재 플랫폼에서 실행할 수 없는 명령도 표시"
+
+[[options]]
+long = "--json"
+description = "기계 판독 가능한 JSON 배열로 출력"
+
+[[examples]]
+command = "scv list"
+
+[[examples]]
+command = "scv list --all"
+
+[[examples]]
+command = "scv list --json"

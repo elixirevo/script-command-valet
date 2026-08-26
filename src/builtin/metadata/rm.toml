@@ -1,0 +1,48 @@
+name = "rm"
+category = "system"
+description = "등록된 사용자 명령을 scv에서 제거합니다."
+usage = "scv rm <command> [--yes] [--dry-run] [--no-input]"
+builtin = true
+runtime = "builtin"
+platforms = ["windows", "linux", "macos"]
+risk = "destructive"
+network = false
+supports_dry_run = true
+effects = [
+  "deletes one registered command package and its implementations",
+  "creates a new activation without the removed package",
+  "prunes old machine-local activations beyond the retention limit",
+]
+
+[[arguments]]
+name = "command"
+required = true
+description = "제거할 사용자 명령 이름"
+
+[[options]]
+short = "-y"
+long = "--yes"
+description = "확인 질문 없이 제거"
+
+[[options]]
+long = "--dry-run"
+description = "제거 대상만 표시하고 파일을 삭제하지 않음"
+
+[[options]]
+long = "--no-input"
+description = "질문을 금지; 실제 제거에는 --yes도 필요"
+
+[[notes]]
+text = "builtin = true인 SCV 내장 명령은 제거할 수 없습니다."
+
+[[notes]]
+text = "stdin이 터미널이 아니면 자동으로 입력을 금지합니다."
+
+[[examples]]
+command = "scv rm gh-org-migrate"
+
+[[examples]]
+command = "scv rm gh-org-migrate --dry-run"
+
+[[examples]]
+command = "scv rm gh-org-migrate --yes --no-input"

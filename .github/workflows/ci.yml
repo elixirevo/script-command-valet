@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - run: cargo fmt --check
+      - run: cargo test
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Verify Unix binary
+        if: runner.os != 'Windows'
+        run: |
+          ./target/debug/scv --version
+          bash -n install.sh
+
+      - name: Verify Windows binary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./target/debug/scv.exe --version
+
+      - name: Verify local Unix installer
+        if: runner.os != 'Windows'
+        run: |
+          install_dir="$RUNNER_TEMP/scv install/bin"
+          profile="$RUNNER_TEMP/scv-shell-profile"
+          SCV_SHELL=zsh SCV_SHELL_PROFILE="$profile" ./install.sh --binary ./target/debug/scv --install-dir "$install_dir"
+          SCV_SHELL=zsh SCV_SHELL_PROFILE="$profile" ./install.sh --binary ./target/debug/scv --install-dir "$install_dir"
+          test "$(grep -c '# >>> scv >>>' "$profile")" -eq 1
+          "$install_dir/scv" --version
+
+      - name: Verify local Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installDir = Join-Path $env:RUNNER_TEMP "scv install\bin"
+          ./install.ps1 -BinaryPath ./target/debug/scv.exe -InstallDir $installDir -NoModifyPath
+          & (Join-Path $installDir "scv.exe") --version

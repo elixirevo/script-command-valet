@@ -1,0 +1,52 @@
+name = "sync"
+category = "system"
+description = "Git을 사용해 SCV command source를 안전하게 동기화합니다."
+usage = "scv sync [status|pull|push] [options]"
+builtin = true
+runtime = "builtin"
+platforms = ["windows", "linux", "macos"]
+risk = "destructive"
+network = true
+supports_dry_run = true
+effects = [
+  "reads local Git source status",
+  "fetches and validates remote changes in an isolated worktree",
+  "fast-forwards the source and creates an activation after approval",
+  "prunes old machine-local activations beyond the retention limit",
+  "pushes committed source changes when push is selected",
+]
+
+[[arguments]]
+name = "operation"
+required = false
+description = "동작: status, pull, push"
+default = "status"
+
+[[options]]
+short = "-y"
+long = "--yes"
+description = "pull 또는 push 확인 질문을 생략"
+
+[[options]]
+long = "--no-input"
+description = "질문을 금지; 실제 pull 또는 push에는 --yes 필요"
+
+[[options]]
+long = "--dry-run"
+description = "push 가능 여부만 검사하고 원격을 변경하지 않음"
+
+[[options]]
+long = "--json"
+description = "결과를 JSON으로 출력"
+
+[[notes]]
+text = "pull은 fetch가 Git ref를 변경하므로 --dry-run을 지원하지 않습니다."
+
+[[examples]]
+command = "scv sync status --json"
+
+[[examples]]
+command = "scv sync pull --yes --no-input"
+
+[[examples]]
+command = "scv sync push --dry-run"

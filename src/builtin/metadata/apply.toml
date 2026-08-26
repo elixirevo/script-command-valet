@@ -1,0 +1,30 @@
+name = "apply"
+category = "system"
+description = "SCV source를 검증하고 새로운 activation으로 적용합니다."
+usage = "scv apply [--dry-run] [--json]"
+builtin = true
+runtime = "builtin"
+platforms = ["windows", "linux", "macos"]
+risk = "destructive"
+network = false
+supports_dry_run = true
+effects = [
+  "validates every command package in the SCV source library",
+  "creates an immutable machine-local activation",
+  "atomically changes the current activation",
+  "prunes old machine-local activations beyond the retention limit",
+]
+
+[[options]]
+long = "--dry-run"
+description = "소스만 검증하고 activation을 생성하지 않음"
+
+[[options]]
+long = "--json"
+description = "결과를 JSON으로 출력"
+
+[[examples]]
+command = "scv apply --dry-run"
+
+[[examples]]
+command = "scv apply"
