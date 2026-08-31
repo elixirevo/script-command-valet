@@ -402,11 +402,9 @@ entry = "main.py"
         assert!(result.changed);
         let second = result.activation.expect("pull should activate");
         assert_ne!(first.activation, second.activation);
-        assert_eq!(
-            fs::read_to_string(paths.source_package_dir("sample").join("main.py"))
-                .expect("source entry should read"),
-            "print('two')\n"
-        );
+        let source = fs::read_to_string(paths.source_package_dir("sample").join("main.py"))
+            .expect("source entry should read");
+        assert_eq!(source.lines().collect::<Vec<_>>(), ["print('two')"]);
         fs::remove_dir_all(root).expect("fixture should be removed");
     }
 }

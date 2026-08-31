@@ -186,7 +186,12 @@ mod tests {
         assert!(prompt.contains("<scv-user-request>\nmake a tool\n</scv-user-request>"));
         assert!(prompt.contains("add, rm"));
         assert!(prompt.contains("unquoted TOML booleans, `true` or `false`"));
-        assert!(prompt.contains("never execute\n   or import an implementation"));
+        assert!(prompt.lines().any(|line| line.contains("never execute")));
+        assert!(
+            prompt
+                .lines()
+                .any(|line| line.trim() == "or import an implementation.")
+        );
         assert!(!prompt.contains("AGENTS.md"));
         assert!(!prompt.contains("CLAUDE.md"));
     }

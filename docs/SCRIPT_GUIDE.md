@@ -198,6 +198,8 @@ system approval remain separate behavioral contracts.
 - Manage the source starting points used by `scv create` under
   `assets/generation/templates/` and materialize them into the temporary generation
   workspace.
+- Keep repository-owned text, embedded prompts, and generation templates on LF line
+  endings through `.gitattributes` so compiled resources are platform-independent.
 - Bash uses `#!/usr/bin/env bash` and `set -euo pipefail`.
 - Node.js, Python, and PowerShell follow the input and error conventions in their
   generation templates.
