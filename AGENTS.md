@@ -7,6 +7,12 @@ canonical source is `.agents/skills/scv-development`; Claude Code reaches the sa
 skill through the `.claude/skills/scv-development` symlink. Update only the canonical
 source.
 
+Use `.agents/skills/scv-commit` after every completed and verified work unit, even
+when the user does not separately ask for a commit. Claude Code reaches it through
+`.claude/skills/scv-commit`. This is standing authorization for scoped local commits
+only; do not push without a separate explicit request. Skip the commit when the user
+explicitly asks not to commit.
+
 When developing SCV:
 
 1. Read `docs/SCRIPT_GUIDE.md` before making changes and treat it as the single
@@ -44,6 +50,9 @@ When developing SCV:
     activation, and route managed source changes through the shared apply transaction.
 13. Do not add old executable names, environment aliases, flat metadata readers, or
     data migration commands; SCV is a pre-release greenfield application.
+14. At the end of each cohesive work unit, stage only its changes, preserve unrelated
+    worktree and index changes, run proportional verification, and use the canonical
+    `scv-commit` skill. Do not batch independent work units into one catch-all commit.
 
 Do not duplicate the full project rules in agent- or model-specific files. Point
 repository-development files back to `docs/SCRIPT_GUIDE.md` instead. Root

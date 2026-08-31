@@ -1,0 +1,4 @@
+interface:
+  display_name: "SCV Commit"
+  short_description: "Commit each completed SCV work unit"
+  default_prompt: "Use $scv-commit to finalize each completed and verified SCV work unit as a scoped local commit without pushing."
