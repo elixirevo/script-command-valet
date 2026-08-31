@@ -285,8 +285,9 @@ Core changes:
 
 ```bash
 cargo fmt --check
-cargo test
-cargo clippy --all-targets --all-features -- -D warnings
+cargo test --locked
+cargo clippy --locked --all-targets --all-features -- -D warnings
+cargo build --locked
 ```
 
 Command changes:
