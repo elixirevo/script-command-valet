@@ -15,6 +15,7 @@ use std::io::{self, Write};
 
 use serde::Serialize;
 
+use crate::i18n::I18n;
 use crate::metadata::Registry;
 use crate::paths::AppPaths;
 
@@ -23,20 +24,21 @@ pub fn run(
     arguments: &[OsString],
     paths: &AppPaths,
     registry: &Registry,
+    i18n: &I18n,
 ) -> Result<i32, String> {
     match command {
         "add" => add::run(arguments, paths, registry),
         "apply" => apply::run(arguments, paths),
-        "config" => config::run(arguments, paths),
+        "config" => config::run(arguments, paths, i18n),
         "create" => create::run(arguments, paths, registry),
         "rm" => remove::run(arguments, paths, registry),
-        "list" => list::run(arguments, registry),
-        "info" => info::run(arguments, registry),
+        "list" => list::run(arguments, registry, i18n),
+        "info" => info::run(arguments, registry, i18n),
         "paths" => paths::run(arguments, paths),
         "rollback" => rollback::run(arguments, paths),
         "status" => status::run(arguments, paths),
         "sync" => sync::run(arguments, paths),
-        _ => Err(format!("builtin '{command}' is not implemented")),
+        _ => Err(i18n.format("builtin.not_implemented", &[("command", command)])),
     }
 }
 

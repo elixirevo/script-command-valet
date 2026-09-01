@@ -1,0 +1,223 @@
+[messages]
+"help.usage" = "사용법:"
+"help.available_commands" = "사용 가능한 명령:"
+"help.description" = "설명:"
+"help.safety" = "안전 정보:"
+"help.risk" = "위험도"
+"help.network" = "네트워크"
+"help.network_required" = "필요"
+"help.no" = "없음"
+"help.dry_run" = "드라이런"
+"help.supported" = "지원"
+"help.not_supported" = "지원하지 않음"
+"help.effects" = "영향:"
+"help.notes" = "참고:"
+"help.arguments" = "인자:"
+"help.options" = "옵션:"
+"help.show_help" = "도움말 표시"
+"help.examples" = "예시:"
+"help.runtime" = "런타임:"
+"help.platforms" = "플랫폼:"
+"help.entry" = "진입 파일:"
+"help.implementations" = "구현:"
+"help.default" = "기본값: {value}"
+"common.none" = "없음"
+"common.cancelled" = "취소했습니다."
+"common.no_files_changed" = "변경된 파일이 없습니다."
+"common.true" = "참"
+"common.false" = "거짓"
+"cli.invalid_command_utf8" = "명령 이름은 올바른 UTF-8이어야 합니다"
+"cli.unknown_command" = "알 수 없는 명령 '{command}'입니다. 'scv --help'를 실행하세요"
+"cli.recovery_warning" = "현재 activation을 불러오지 못해 복구 builtin '{command}'을 실행합니다: {error}"
+"cli.activation_load_failed" = "현재 activation을 불러오지 못했습니다: {error}. 'scv apply' 또는 'scv rollback'을 실행하세요"
+"builtin.not_implemented" = "builtin '{command}'이 구현되지 않았습니다"
+"config.path" = "설정 파일: {path}"
+"config.defaults" = "(agent CLI 기본값을 사용하며 create agent 기본값은 codex입니다)"
+"config.would_set" = "설정할 예정입니다: {key} = {value}"
+"config.set" = "설정했습니다: {key} = {value}"
+
+[builtins.add]
+description = "외부 스크립트나 바이너리를 SCV에 등록합니다."
+effects = [
+  "SCV command package 하나를 생성합니다",
+  "로컬 implementation 하나를 package에 복사합니다",
+  "package metadata.toml을 작성합니다",
+  "검증된 machine-local command snapshot을 생성하고 활성화합니다",
+  "보존 한도를 넘는 이전 machine-local activation을 정리합니다",
+  "--force 사용 시 기존 사용자 명령을 교체합니다",
+]
+notes = [
+  "원본 파일은 수정하지 않고 SCV_HOME/commands/<command>/ package에 implementation과 metadata.toml을 생성합니다.",
+  "stdin이 터미널이 아니면 --no-input을 생략해도 질문하지 않습니다.",
+]
+
+[builtins.add.arguments]
+script = "등록할 스크립트 또는 바이너리 경로"
+
+[builtins.add.options]
+"--category" = "논리적 카테고리"
+"--description" = "명령 설명"
+"--usage" = "사용 형식"
+"--name" = "실행할 명령 이름"
+"--runtime" = "실행 방식: bash, node, python, pwsh, binary"
+"--platforms" = "지원 플랫폼을 쉼표로 구분: windows,linux,macos"
+"--risk" = "명령의 최대 위험도"
+"--network" = "명령의 네트워크 필요 여부"
+"--supports-dry-run" = "등록할 명령의 --dry-run 지원 여부"
+"--effect" = "명령의 관찰 가능한 효과; 여러 번 지정 가능"
+"--force" = "동일한 사용자 명령이 존재하면 덮어쓰기"
+"--dry-run" = "등록 계획만 검증하고 파일을 변경하지 않음"
+"--no-input" = "질문을 금지하고 누락된 필수 metadata를 오류로 처리"
+
+[builtins.add.defaults]
+"--usage" = "scv <command>"
+"--platforms" = "현재 플랫폼"
+
+[builtins.apply]
+description = "SCV source를 검증하고 새로운 activation으로 적용합니다."
+effects = [
+  "SCV source library의 모든 command package를 검증합니다",
+  "변경할 수 없는 machine-local activation을 생성합니다",
+  "현재 activation을 원자적으로 변경합니다",
+  "보존 한도를 넘는 이전 machine-local activation을 정리합니다",
+]
+
+[builtins.apply.options]
+"--dry-run" = "source만 검증하고 activation을 생성하지 않음"
+"--json" = "결과를 JSON으로 출력"
+
+[builtins.config]
+description = "SCV create와 agent 기본 설정을 조회하거나 변경합니다."
+effects = ["로컬 SCV config.toml 파일을 읽거나 변경합니다"]
+notes = ["agent, model, effort 단축 키와 ui.locale, create.agent, create.model, create.effort, agents.<agent>.model/effort 키를 지원합니다."]
+
+[builtins.config.arguments]
+action = "show 또는 set"
+"key/value" = "set에서 변경할 설정 키와 값"
+
+[builtins.config.options]
+"--json" = "show 결과를 기계 판독 가능한 JSON 객체로 출력"
+"--dry-run" = "set 결과만 표시하고 config 파일을 변경하지 않음"
+
+[builtins.config.defaults]
+action = "show"
+
+[builtins.create]
+description = "자연어 요청으로 검증된 영구 SCV command package를 생성합니다."
+effects = [
+  "기존 인증을 사용하는 로컬 coding-agent CLI 하나를 호출합니다",
+  "격리된 임시 생성 workspace를 만들고 제거합니다",
+  "확인 후 검증된 SCV command package 하나를 Git source에 저장합니다",
+  "검증된 machine-local command snapshot을 생성하고 활성화합니다",
+  "보존 한도를 넘는 이전 machine-local activation을 정리합니다",
+  "--force 사용 시 기존 사용자 명령을 교체합니다",
+]
+notes = [
+  "agent는 임시 workspace에만 쓰며 SCV validator와 installer만 command library를 변경합니다.",
+  "stdin이 터미널이 아니면 자동으로 입력을 금지합니다.",
+]
+
+[builtins.create.arguments]
+description = "영구 command로 만들 자연어 요구사항"
+
+[builtins.create.options]
+"--name" = "생성할 command 이름을 고정"
+"--agent" = "사용할 로컬 coding-agent adapter"
+"--model" = "agent에 그대로 전달할 model 이름"
+"--effort" = "agent가 지원하는 공통 reasoning effort"
+"--agent-option" = "Codex provider 고유 config; 여러 번 지정 가능"
+"--force" = "동일한 사용자 command가 존재하면 승인 후 교체"
+"--yes" = "검증된 package 설치 확인을 생략"
+"--no-input" = "질문을 금지; package 설치에는 --yes도 필요"
+
+[builtins.create.defaults]
+"--agent" = "config 또는 codex"
+
+[builtins.info]
+description = "명령의 도움말과 런타임 정보를 표시합니다."
+effects = ["로컬 SCV command metadata를 읽습니다"]
+
+[builtins.info.arguments]
+command = "확인할 명령 이름"
+
+[builtins.info.options]
+"--json" = "기계 판독 가능한 JSON 객체로 출력"
+
+[builtins.list]
+description = "등록된 명령을 논리적 카테고리별로 표시합니다."
+effects = ["로컬 SCV command metadata를 읽습니다"]
+
+[builtins.list.options]
+"--all" = "현재 플랫폼에서 실행할 수 없는 명령도 표시"
+"--json" = "기계 판독 가능한 JSON 배열로 출력"
+
+[builtins.paths]
+description = "현재 플랫폼에서 SCV가 사용하는 경로를 표시합니다."
+effects = ["SCV source, data, config, cache 경로를 확인합니다"]
+
+[builtins.paths.options]
+"--json" = "경로를 JSON으로 출력"
+
+[builtins.rm]
+description = "등록된 사용자 명령을 SCV에서 제거합니다."
+effects = [
+  "등록된 command package와 implementation을 삭제합니다",
+  "제거한 package가 없는 새 activation을 생성합니다",
+  "보존 한도를 넘는 이전 machine-local activation을 정리합니다",
+]
+notes = [
+  "builtin = true인 SCV 내장 명령은 제거할 수 없습니다.",
+  "stdin이 터미널이 아니면 자동으로 입력을 금지합니다.",
+]
+
+[builtins.rm.arguments]
+command = "제거할 사용자 명령 이름"
+
+[builtins.rm.options]
+"--yes" = "확인 질문 없이 제거"
+"--dry-run" = "제거 대상만 표시하고 파일을 삭제하지 않음"
+"--no-input" = "질문을 금지; 실제 제거에는 --yes도 필요"
+
+[builtins.rollback]
+description = "검증된 이전 SCV activation으로 전환합니다."
+effects = ["현재 activation 포인터를 원자적으로 변경합니다"]
+
+[builtins.rollback.arguments]
+activation = "전환할 activation ID"
+
+[builtins.rollback.options]
+"--dry-run" = "전환할 activation만 표시하고 변경하지 않음"
+"--json" = "결과를 JSON으로 출력"
+
+[builtins.rollback.defaults]
+activation = "가장 최근의 이전 activation"
+
+[builtins.status]
+description = "SCV source와 현재 activation 상태를 비교합니다."
+effects = ["SCV source와 현재 activation을 읽고 검증합니다"]
+
+[builtins.status.options]
+"--json" = "상태를 JSON으로 출력"
+
+[builtins.sync]
+description = "Git을 사용해 SCV command source를 안전하게 동기화합니다."
+effects = [
+  "로컬 Git source 상태를 읽습니다",
+  "격리된 worktree에서 원격 변경을 가져와 검증합니다",
+  "승인 후 source를 fast-forward하고 activation을 생성합니다",
+  "보존 한도를 넘는 이전 machine-local activation을 정리합니다",
+  "push 선택 시 commit된 source 변경을 업로드합니다",
+]
+notes = ["pull은 fetch가 Git ref를 변경하므로 --dry-run을 지원하지 않습니다."]
+
+[builtins.sync.arguments]
+operation = "동작: status, pull, push"
+
+[builtins.sync.options]
+"--yes" = "pull 또는 push 확인 질문을 생략"
+"--no-input" = "질문을 금지; 실제 pull 또는 push에는 --yes 필요"
+"--dry-run" = "push 가능 여부만 검사하고 원격을 변경하지 않음"
+"--json" = "결과를 JSON으로 출력"
+
+[builtins.sync.defaults]
+operation = "status"

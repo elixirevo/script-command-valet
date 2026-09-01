@@ -1,6 +1,6 @@
 name = "info"
 category = "system"
-description = "명령의 도움말과 런타임 정보를 표시합니다."
+description = "Show command help and runtime information."
 usage = "scv info <command> [--json]"
 builtin = true
 runtime = "builtin"
@@ -13,11 +13,11 @@ effects = ["reads local SCV command metadata"]
 [[arguments]]
 name = "command"
 required = true
-description = "확인할 명령 이름"
+description = "Command name to inspect"
 
 [[options]]
 long = "--json"
-description = "기계 판독 가능한 JSON 객체로 출력"
+description = "Print a machine-readable JSON object"
 
 [[examples]]
 command = "scv info gh-org-clone"

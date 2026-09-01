@@ -1,6 +1,6 @@
 name = "config"
 category = "system"
-description = "SCV create와 agent 기본 설정을 조회하거나 변경합니다."
+description = "View or change SCV create and agent defaults."
 usage = "scv config [show [--json] | set <key> <value> [--dry-run]]"
 builtin = true
 runtime = "builtin"
@@ -13,24 +13,24 @@ effects = ["reads or updates the local SCV config.toml file"]
 [[arguments]]
 name = "action"
 required = false
-description = "show 또는 set"
+description = "show or set"
 default = "show"
 
 [[arguments]]
 name = "key/value"
 required = false
-description = "set에서 변경할 설정 키와 값"
+description = "Configuration key and value for set"
 
 [[options]]
 long = "--json"
-description = "show 결과를 기계 판독 가능한 JSON 객체로 출력"
+description = "Print show output as a machine-readable JSON object"
 
 [[options]]
 long = "--dry-run"
-description = "set 결과만 표시하고 config 파일을 변경하지 않음"
+description = "Preview set without changing the config file"
 
 [[notes]]
-text = "agent, model, effort 단축 키와 create.agent, create.model, create.effort, agents.<agent>.model/effort 키를 지원합니다."
+text = "Supports ui.locale; agent, model, and effort shortcuts; create.agent/model/effort; and agents.<agent>.model/effort keys."
 
 [[examples]]
 command = "scv config show"

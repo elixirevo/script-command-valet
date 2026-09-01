@@ -6,6 +6,7 @@ mod command;
 mod config;
 mod generation;
 mod help;
+mod i18n;
 mod input;
 mod metadata;
 mod package;

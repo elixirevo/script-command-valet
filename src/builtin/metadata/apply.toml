@@ -1,6 +1,6 @@
 name = "apply"
 category = "system"
-description = "SCV source를 검증하고 새로운 activation으로 적용합니다."
+description = "Validate the SCV source and apply it as a new activation."
 usage = "scv apply [--dry-run] [--json]"
 builtin = true
 runtime = "builtin"
@@ -17,11 +17,11 @@ effects = [
 
 [[options]]
 long = "--dry-run"
-description = "소스만 검증하고 activation을 생성하지 않음"
+description = "Validate the source without creating an activation"
 
 [[options]]
 long = "--json"
-description = "결과를 JSON으로 출력"
+description = "Print the result as JSON"
 
 [[examples]]
 command = "scv apply --dry-run"

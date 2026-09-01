@@ -35,6 +35,9 @@ agent configuration, cache, activation state, and trust state do not belong here
 Rust resolves native locations through `directories::ProjectDirs`. Supported
 overrides are `SCV_HOME`, `SCV_DATA_DIR`, `SCV_CONFIG_DIR`, and `SCV_CACHE_DIR`.
 SCV rejects overrides that make the Git source overlap data, config, or cache.
+The config directory contains machine-local preferences such as `ui.locale` and
+agent defaults. English and Korean locale catalogs are compiled into the executable;
+SCV does not download language packs at runtime.
 
 ## Activation layout
 

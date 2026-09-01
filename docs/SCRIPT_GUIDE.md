@@ -142,6 +142,21 @@ scv info <command> --json
 
 Do not mix progress messages or explanatory text into JSON stdout.
 
+### Localization
+
+- English is the canonical language for Rust builtin metadata, embedded generation
+  resources, errors that are not yet catalogued, and documentation examples.
+- SCV embeds complete `en` and `ko` catalogs at build time. The default UI locale is
+  `en`; `scv config set ui.locale <en|ko>` changes the machine-local preference.
+- Locale catalogs may translate only core-owned human output and builtin metadata
+  views. They do not rewrite user-owned external command metadata.
+- `scv list --json`, `scv info <command> --json`, and other JSON contracts remain
+  locale-independent. In particular, builtin metadata serialized as JSON remains
+  the canonical English metadata.
+- Keep a locale catalog structurally aligned with every builtin description,
+  effect, argument, option, note, and localized default. A missing translation is a
+  test failure, not a release-time network fetch.
+
 ## 5. Runtimes and platforms
 
 | Runtime | SCV execution | Requirement |

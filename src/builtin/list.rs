@@ -4,6 +4,7 @@ use serde::Serialize;
 
 use crate::command::current_platform;
 use crate::help;
+use crate::i18n::I18n;
 use crate::metadata::{Registry, Risk};
 
 use super::write_json;
@@ -21,7 +22,7 @@ struct CommandSummary<'a> {
     supports_dry_run: bool,
 }
 
-pub fn run(arguments: &[OsString], registry: &Registry) -> Result<i32, String> {
+pub fn run(arguments: &[OsString], registry: &Registry, i18n: &I18n) -> Result<i32, String> {
     let mut show_all = false;
     let mut json = false;
     for argument in arguments {
@@ -65,7 +66,11 @@ pub fn run(arguments: &[OsString], registry: &Registry) -> Result<i32, String> {
         }
         println!("{category}:");
         for command in commands {
-            println!("  {:<20} {}", command.name, command.description);
+            println!(
+                "  {:<20} {}",
+                command.name,
+                i18n.command_description(command)
+            );
         }
     }
     Ok(0)

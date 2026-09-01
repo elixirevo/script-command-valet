@@ -2,19 +2,20 @@ use std::ffi::OsString;
 
 use crate::agent::{self, Effort};
 use crate::config::Settings;
+use crate::i18n::{I18n, Locale};
 use crate::paths::AppPaths;
 
 use super::write_json;
 
-pub fn run(arguments: &[OsString], paths: &AppPaths) -> Result<i32, String> {
+pub fn run(arguments: &[OsString], paths: &AppPaths, i18n: &I18n) -> Result<i32, String> {
     let mut arguments = arguments.iter();
     let action = arguments
         .next()
         .and_then(|value| value.to_str())
         .unwrap_or("show");
     match action {
-        "show" => show(arguments, paths),
-        "set" => set(arguments, paths),
+        "show" => show(arguments, paths, i18n),
+        "set" => set(arguments, paths, i18n),
         value => Err(usage_error(&format!("unknown action '{value}'"))),
     }
 }
@@ -22,6 +23,7 @@ pub fn run(arguments: &[OsString], paths: &AppPaths) -> Result<i32, String> {
 fn show<'a>(
     arguments: impl Iterator<Item = &'a OsString>,
     paths: &AppPaths,
+    i18n: &I18n,
 ) -> Result<i32, String> {
     let mut json = false;
     for argument in arguments {
@@ -39,11 +41,17 @@ fn show<'a>(
     if json {
         write_json("config", &settings)?;
     } else {
-        println!("Config: {}", paths.config_path().display());
+        println!(
+            "{}",
+            i18n.format(
+                "config.path",
+                &[("path", &paths.config_path().display().to_string())]
+            )
+        );
         let contents = toml::to_string_pretty(&settings)
             .map_err(|error| format!("config: could not serialize config: {error}"))?;
         if contents.trim().is_empty() {
-            println!("(using agent CLI defaults; create agent defaults to codex)");
+            println!("{}", i18n.text("config.defaults"));
         } else {
             print!("{contents}");
         }
@@ -51,7 +59,11 @@ fn show<'a>(
     Ok(0)
 }
 
-fn set<'a>(arguments: impl Iterator<Item = &'a OsString>, paths: &AppPaths) -> Result<i32, String> {
+fn set<'a>(
+    arguments: impl Iterator<Item = &'a OsString>,
+    paths: &AppPaths,
+    i18n: &I18n,
+) -> Result<i32, String> {
     let arguments = arguments.collect::<Vec<_>>();
     let mut dry_run = false;
     let mut values = Vec::new();
@@ -76,14 +88,37 @@ fn set<'a>(arguments: impl Iterator<Item = &'a OsString>, paths: &AppPaths) -> R
     let mut settings = Settings::load(paths)?;
     settings.set(key, (*value).to_string())?;
     if dry_run {
-        println!("Would set {key} = {value}");
-        println!("Config: {}", paths.config_path().display());
-        println!("No files were changed.");
+        println!(
+            "{}",
+            i18n.format("config.would_set", &[("key", key), ("value", value)])
+        );
+        println!(
+            "{}",
+            i18n.format(
+                "config.path",
+                &[("path", &paths.config_path().display().to_string())]
+            )
+        );
+        println!("{}", i18n.text("common.no_files_changed"));
         return Ok(0);
     }
     settings.save(paths)?;
-    println!("Set {key} = {value}");
-    println!("Config: {}", paths.config_path().display());
+    let output_i18n = if *key == "ui.locale" {
+        I18n::new(Locale::parse(value)?)?
+    } else {
+        I18n::new(i18n.locale())?
+    };
+    println!(
+        "{}",
+        output_i18n.format("config.set", &[("key", key), ("value", value)])
+    );
+    println!(
+        "{}",
+        output_i18n.format(
+            "config.path",
+            &[("path", &paths.config_path().display().to_string())]
+        )
+    );
     Ok(0)
 }
 
@@ -95,6 +130,9 @@ fn validate_value(key: &str, value: &str) -> Result<(), String> {
     }
     if matches!(key, "agent" | "create.agent") {
         agent::adapter(value).map(|_| ())?;
+    }
+    if key == "ui.locale" {
+        Locale::parse(value)?;
     }
     if key == "effort" || key.ends_with(".effort") {
         Effort::parse(value).map(|_| ())?;

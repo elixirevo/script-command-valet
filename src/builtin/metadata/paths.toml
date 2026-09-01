@@ -1,6 +1,6 @@
 name = "paths"
 category = "system"
-description = "현재 플랫폼에서 SCV가 사용하는 경로를 표시합니다."
+description = "Show the paths SCV uses on the current platform."
 usage = "scv paths [--json]"
 builtin = true
 runtime = "builtin"
@@ -12,7 +12,7 @@ effects = ["reads resolved SCV source, data, config, and cache paths"]
 
 [[options]]
 long = "--json"
-description = "경로를 JSON으로 출력"
+description = "Print paths as JSON"
 
 [[examples]]
 command = "scv paths --json"

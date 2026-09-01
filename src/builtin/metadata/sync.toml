@@ -1,6 +1,6 @@
 name = "sync"
 category = "system"
-description = "Git을 사용해 SCV command source를 안전하게 동기화합니다."
+description = "Safely synchronize the SCV command source with Git."
 usage = "scv sync [status|pull|push] [options]"
 builtin = true
 runtime = "builtin"
@@ -19,28 +19,28 @@ effects = [
 [[arguments]]
 name = "operation"
 required = false
-description = "동작: status, pull, push"
+description = "Operation: status, pull, or push"
 default = "status"
 
 [[options]]
 short = "-y"
 long = "--yes"
-description = "pull 또는 push 확인 질문을 생략"
+description = "Skip pull or push confirmation"
 
 [[options]]
 long = "--no-input"
-description = "질문을 금지; 실제 pull 또는 push에는 --yes 필요"
+description = "Disable prompts; an actual pull or push requires --yes"
 
 [[options]]
 long = "--dry-run"
-description = "push 가능 여부만 검사하고 원격을 변경하지 않음"
+description = "Check whether push can run without changing the remote"
 
 [[options]]
 long = "--json"
-description = "결과를 JSON으로 출력"
+description = "Print the result as JSON"
 
 [[notes]]
-text = "pull은 fetch가 Git ref를 변경하므로 --dry-run을 지원하지 않습니다."
+text = "Pull does not support --dry-run because fetch changes Git refs."
 
 [[examples]]
 command = "scv sync status --json"

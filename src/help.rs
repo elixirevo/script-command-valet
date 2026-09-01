@@ -1,17 +1,18 @@
 use std::collections::BTreeMap;
 
 use crate::command::{current_platform, platform_label};
+use crate::i18n::I18n;
 use crate::metadata::{CommandMetadata, Registry};
 
-pub fn print_top(registry: &Registry) {
+pub fn print_top(registry: &Registry, i18n: &I18n) {
     let platform = current_platform();
 
-    println!("Usage:");
+    println!("{}", i18n.text("help.usage"));
     println!("  scv <command> [arguments]");
     println!("  scv <command> --help");
     println!("  scv --help");
     println!();
-    println!("Available commands:");
+    println!("{}", i18n.text("help.available_commands"));
 
     for (category, commands) in
         grouped_by_category(registry.iter().filter(|command| command.supports(platform)))
@@ -19,7 +20,11 @@ pub fn print_top(registry: &Registry) {
         println!();
         println!("{category}:");
         for command in commands {
-            println!("  {:<20} {}", command.name, command.description);
+            println!(
+                "  {:<20} {}",
+                command.name,
+                i18n.command_description(command)
+            );
         }
     }
 }
@@ -40,54 +45,72 @@ pub fn grouped_by_category<'a>(
     categories
 }
 
-pub fn print_command(command: &CommandMetadata) {
-    println!("Usage:");
+pub fn print_command(command: &CommandMetadata, i18n: &I18n) {
+    println!("{}", i18n.text("help.usage"));
     println!("  {}", command.usage);
     println!();
-    println!("Description:");
-    println!("  {}", command.description);
+    println!("{}", i18n.text("help.description"));
+    println!("  {}", i18n.command_description(command));
     println!();
-    println!("Safety:");
-    println!("  risk        : {}", command.risk.as_str());
+    println!("{}", i18n.text("help.safety"));
     println!(
-        "  network     : {}",
-        if command.network { "required" } else { "no" }
+        "  {:<12}: {}",
+        i18n.text("help.risk"),
+        command.risk.as_str()
     );
     println!(
-        "  dry-run     : {}",
-        if command.supports_dry_run {
-            "supported"
+        "  {:<12}: {}",
+        i18n.text("help.network"),
+        if command.network {
+            i18n.text("help.network_required")
         } else {
-            "not supported"
+            i18n.text("help.no")
         }
     );
-    println!("  effects:");
-    for effect in &command.effects {
-        println!("    - {effect}");
+    println!(
+        "  {:<12}: {}",
+        i18n.text("help.dry_run"),
+        if command.supports_dry_run {
+            i18n.text("help.supported")
+        } else {
+            i18n.text("help.not_supported")
+        }
+    );
+    println!("  {}", i18n.text("help.effects"));
+    for (index, effect) in command.effects.iter().enumerate() {
+        println!("    - {}", i18n.effect(command, index, effect));
     }
 
     if !command.notes.is_empty() {
         println!();
-        println!("Notes:");
-        for note in &command.notes {
-            println!("  - {}", note.text);
+        println!("{}", i18n.text("help.notes"));
+        for (index, note) in command.notes.iter().enumerate() {
+            println!("  - {}", i18n.note(command, index, note));
         }
     }
 
     if !command.arguments.is_empty() {
         println!();
-        println!("Arguments:");
+        println!("{}", i18n.text("help.arguments"));
         for argument in &command.arguments {
-            let default = default_suffix(argument.default.as_deref());
+            let default = default_suffix(
+                argument
+                    .default
+                    .as_deref()
+                    .map(|value| i18n.default_value(command, &argument.name, value)),
+                i18n,
+            );
             println!(
                 "  {:<34} {}{}",
-                argument.name, argument.description, default
+                argument.name,
+                i18n.argument_description(command, argument),
+                default
             );
         }
     }
 
     println!();
-    println!("Options:");
+    println!("{}", i18n.text("help.options"));
     for option in &command.options {
         let mut label = match (&option.short, &option.long) {
             (Some(short), Some(long)) => format!("{short}, {long}"),
@@ -99,34 +122,49 @@ pub fn print_command(command: &CommandMetadata) {
             label.push(' ');
             label.push_str(value);
         }
-        let default = default_suffix(option.default.as_deref());
-        println!("  {label:<34} {}{}", option.description, default);
+        let key = option
+            .long
+            .as_deref()
+            .or(option.short.as_deref())
+            .unwrap_or("");
+        let default = default_suffix(
+            option
+                .default
+                .as_deref()
+                .map(|value| i18n.default_value(command, key, value)),
+            i18n,
+        );
+        println!(
+            "  {label:<34} {}{}",
+            i18n.option_description(command, option),
+            default
+        );
     }
-    println!("  {:<34} 도움말 표시", "-h, --help");
+    println!("  {:<34} {}", "-h, --help", i18n.text("help.show_help"));
 
     if !command.examples.is_empty() {
         println!();
-        println!("Examples:");
+        println!("{}", i18n.text("help.examples"));
         for example in &command.examples {
             println!("  {}", example.command);
         }
     }
 }
 
-fn default_suffix(value: Option<&str>) -> String {
+fn default_suffix(value: Option<&str>, i18n: &I18n) -> String {
     value
-        .map(|value| format!(" (default: {value})"))
+        .map(|value| format!(" ({})", i18n.format("help.default", &[("value", value)])))
         .unwrap_or_default()
 }
 
-pub fn print_info(command: &CommandMetadata) {
-    print_command(command);
+pub fn print_info(command: &CommandMetadata, i18n: &I18n) {
+    print_command(command, i18n);
     if command.implementations.is_empty() {
         println!();
-        println!("Runtime:");
+        println!("{}", i18n.text("help.runtime"));
         println!("  {}", command.runtime);
         println!();
-        println!("Platforms:");
+        println!("{}", i18n.text("help.platforms"));
         println!(
             "  {}",
             command
@@ -138,12 +176,12 @@ pub fn print_info(command: &CommandMetadata) {
         );
         if let Some(entry) = &command.entry {
             println!();
-            println!("Entry:");
+            println!("{}", i18n.text("help.entry"));
             println!("  {entry}");
         }
     } else {
         println!();
-        println!("Implementations:");
+        println!("{}", i18n.text("help.implementations"));
         for implementation in &command.implementations {
             let platforms = implementation
                 .platforms

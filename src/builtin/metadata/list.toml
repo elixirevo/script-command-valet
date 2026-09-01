@@ -1,6 +1,6 @@
 name = "list"
 category = "system"
-description = "등록된 명령을 논리적 카테고리별로 표시합니다."
+description = "List registered commands by logical category."
 usage = "scv list [--all] [--json]"
 builtin = true
 runtime = "builtin"
@@ -13,11 +13,11 @@ effects = ["reads local SCV command metadata"]
 [[options]]
 short = "-a"
 long = "--all"
-description = "현재 플랫폼에서 실행할 수 없는 명령도 표시"
+description = "Include commands unavailable on the current platform"
 
 [[options]]
 long = "--json"
-description = "기계 판독 가능한 JSON 배열로 출력"
+description = "Print a machine-readable JSON array"
 
 [[examples]]
 command = "scv list"

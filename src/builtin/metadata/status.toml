@@ -1,6 +1,6 @@
 name = "status"
 category = "system"
-description = "SCV source와 현재 activation 상태를 비교합니다."
+description = "Compare the SCV source with the current activation."
 usage = "scv status [--json]"
 builtin = true
 runtime = "builtin"
@@ -12,7 +12,7 @@ effects = ["reads and validates the SCV source and current activation"]
 
 [[options]]
 long = "--json"
-description = "상태를 JSON으로 출력"
+description = "Print status as JSON"
 
 [[examples]]
 command = "scv status --json"

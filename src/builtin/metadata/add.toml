@@ -1,6 +1,6 @@
 name = "add"
 category = "system"
-description = "외부 스크립트나 바이너리를 scv에 등록합니다."
+description = "Register an external script or binary with SCV."
 usage = "scv add <script> [options] [--no-input]"
 builtin = true
 runtime = "builtin"
@@ -20,93 +20,93 @@ effects = [
 [[arguments]]
 name = "script"
 required = true
-description = "등록할 스크립트 또는 바이너리 경로"
+description = "Script or binary path to register"
 
 [[options]]
 short = "-c"
 long = "--category"
 value = "<category>"
-description = "논리적 카테고리"
+description = "Logical category"
 
 [[options]]
 short = "-d"
 long = "--description"
 value = "<description>"
-description = "명령 설명"
+description = "Command description"
 
 [[options]]
 short = "-u"
 long = "--usage"
 value = "<usage>"
-description = "사용 형식"
+description = "Usage form"
 default = "scv <command>"
 
 [[options]]
 short = "-n"
 long = "--name"
 value = "<command>"
-description = "실행할 명령 이름"
+description = "Command name to invoke"
 
 [[options]]
 short = "-r"
 long = "--runtime"
 value = "<runtime>"
-description = "실행 방식: bash, node, python, pwsh, binary"
+description = "Runtime: bash, node, python, pwsh, or binary"
 
 [[options]]
 short = "-p"
 long = "--platforms"
 value = "<platforms>"
-description = "지원 플랫폼을 쉼표로 구분: windows,linux,macos"
-default = "현재 플랫폼"
+description = "Comma-separated platforms: windows,linux,macos"
+default = "Current platform"
 
 [[options]]
 long = "--risk"
 value = "<read|write|destructive>"
-description = "명령의 최대 위험도"
+description = "Maximum command risk"
 
 [[options]]
 long = "--network"
 value = "<true|false>"
-description = "명령의 네트워크 필요 여부"
+description = "Whether the command requires network access"
 
 [[options]]
 long = "--supports-dry-run"
 value = "<true|false>"
-description = "등록할 명령의 --dry-run 지원 여부"
+description = "Whether the registered command supports --dry-run"
 
 [[options]]
 long = "--effect"
 value = "<description>"
-description = "명령의 관찰 가능한 효과; 여러 번 지정 가능"
+description = "Observable command effect; may be repeated"
 
 [[options]]
 short = "-f"
 long = "--force"
-description = "동일한 사용자 명령이 존재하면 덮어쓰기"
+description = "Replace an existing user command with the same name"
 
 [[options]]
 long = "--dry-run"
-description = "등록 계획만 검증하고 파일을 변경하지 않음"
+description = "Validate the registration plan without changing files"
 
 [[options]]
 long = "--no-input"
-description = "질문을 금지하고 누락된 필수 metadata를 오류로 처리"
+description = "Disable prompts and reject missing required metadata"
 
 [[notes]]
-text = "원본 파일은 수정하지 않고 SCV_HOME/commands/<command>/ package에 implementation과 metadata.toml을 생성합니다."
+text = "The source file is not modified; SCV creates the implementation and metadata.toml under SCV_HOME/commands/<command>/."
 
 [[notes]]
-text = "stdin이 터미널이 아니면 --no-input을 생략해도 질문하지 않습니다."
+text = "SCV does not prompt when stdin is not a terminal, even without --no-input."
 
 [[examples]]
 command = "scv add ./clone.sh"
 
 [[examples]]
-command = "scv add ./clone.sh --category github --description \"GitHub clone 명령\""
+command = "scv add ./clone.sh --category github --description \"GitHub clone command\""
 
 [[examples]]
-command = "scv add ./clone.sh --category github --description \"GitHub clone 명령\" --usage \"scv gh-org-clone <organization> [--directory <path>]\" --name gh-org-clone"
+command = "scv add ./clone.sh --category github --description \"GitHub clone command\" --usage \"scv gh-org-clone <organization> [--directory <path>]\" --name gh-org-clone"
 
 [[examples]]
-command = "scv add ./tool.exe --runtime binary --platforms windows --category system --description \"Windows 도구\" --risk write --network false --supports-dry-run false --effect \"writes local files\" --no-input"
+command = "scv add ./tool.exe --runtime binary --platforms windows --category system --description \"Windows tool\" --risk write --network false --supports-dry-run false --effect \"writes local files\" --no-input"

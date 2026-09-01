@@ -1,6 +1,6 @@
 name = "rollback"
 category = "system"
-description = "검증된 이전 SCV activation으로 전환합니다."
+description = "Switch to a validated previous SCV activation."
 usage = "scv rollback [activation] [--dry-run] [--json]"
 builtin = true
 runtime = "builtin"
@@ -13,16 +13,16 @@ effects = ["atomically changes the current activation pointer"]
 [[arguments]]
 name = "activation"
 required = false
-description = "전환할 activation ID"
-default = "가장 최근의 이전 activation"
+description = "Activation ID to select"
+default = "Most recent previous activation"
 
 [[options]]
 long = "--dry-run"
-description = "전환할 activation만 표시하고 변경하지 않음"
+description = "Show the target activation without switching"
 
 [[options]]
 long = "--json"
-description = "결과를 JSON으로 출력"
+description = "Print the result as JSON"
 
 [[examples]]
 command = "scv rollback --dry-run"

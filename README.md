@@ -8,6 +8,10 @@ The native Rust core provides dispatch, metadata help, safety discovery, immutab
 activations, Git synchronization, and optional agent-powered package generation.
 AI is never required to run or manage an existing command library.
 
+SCV embeds English and Korean UI catalogs. English is the default; choose Korean
+with `scv config set ui.locale ko`. Human help for native builtins follows that
+setting, while JSON output and user-owned command metadata remain unchanged.
+
 ## Architecture
 
 SCV separates the portable Git source from machine-local executable state.

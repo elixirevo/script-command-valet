@@ -56,6 +56,9 @@ layout, security boundaries, or external side effects.
   approval, confirmation, non-TTY, or dry-run boundaries through model options.
 - Keep public behavior native on macOS, Linux, and Windows. Do not introduce Unix-only
   assumptions into Rust core behavior or Windows paths.
+- Keep builtin metadata and machine-readable JSON canonical in English. Embedded
+  locale catalogs may localize core-owned human views without rewriting external
+  command metadata or requiring a runtime download.
 
 ## Implement and review
 

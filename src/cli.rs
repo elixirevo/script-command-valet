@@ -3,13 +3,17 @@ use std::ffi::OsString;
 
 use crate::builtin;
 use crate::command;
+use crate::config::Settings;
 use crate::help;
+use crate::i18n::I18n;
 use crate::metadata::Registry;
 use crate::paths::AppPaths;
 
 pub fn run() -> Result<i32, String> {
     let paths = AppPaths::discover()?;
     let mut arguments: Vec<OsString> = env::args_os().skip(1).collect();
+    let settings = Settings::load(&paths)?;
+    let i18n = I18n::new(settings.ui.locale)?;
 
     if arguments
         .first()
@@ -28,42 +32,44 @@ pub fn run() -> Result<i32, String> {
         Ok(registry) => registry,
         Err(error) if recovery_builtin(requested) => {
             eprintln!(
-                "scv: warning: current activation could not be loaded; running recovery builtin '{requested}': {error}"
+                "scv: warning: {}",
+                i18n.format(
+                    "cli.recovery_warning",
+                    &[("command", requested), ("error", &error)],
+                )
             );
             Registry::builtins()?
         }
         Err(error) => {
-            return Err(format!(
-                "current activation could not be loaded: {error}. Run 'scv apply' or 'scv rollback'"
-            ));
+            return Err(i18n.format("cli.activation_load_failed", &[("error", &error)]));
         }
     };
 
     if arguments.is_empty() {
-        help::print_top(&registry);
+        help::print_top(&registry, &i18n);
         return Ok(0);
     }
 
     let command = arguments.remove(0);
     let command = command
         .to_str()
-        .ok_or_else(|| "command name must be valid UTF-8".to_string())?;
+        .ok_or_else(|| i18n.text("cli.invalid_command_utf8").to_string())?;
 
     if matches!(command, "-h" | "--help" | "help") {
-        help::print_top(&registry);
+        help::print_top(&registry, &i18n);
         return Ok(0);
     }
     let metadata = registry
         .get(command)
-        .ok_or_else(|| format!("unknown command '{command}'. Run 'scv --help'"))?;
+        .ok_or_else(|| i18n.format("cli.unknown_command", &[("command", command)]))?;
 
     if requests_help(&arguments) {
-        help::print_command(metadata);
+        help::print_command(metadata, &i18n);
         return Ok(0);
     }
 
     if metadata.builtin {
-        builtin::run(command, &arguments, &paths, &registry)
+        builtin::run(command, &arguments, &paths, &registry, &i18n)
     } else {
         command::run_external(metadata, &arguments, &paths)
     }

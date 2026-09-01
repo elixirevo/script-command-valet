@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
 
+use crate::i18n::Locale;
 use crate::paths::AppPaths;
 use crate::storage;
 
@@ -9,9 +10,18 @@ use crate::storage;
 #[serde(deny_unknown_fields)]
 pub struct Settings {
     #[serde(default)]
+    pub ui: UiSettings,
+    #[serde(default)]
     pub create: CreateSettings,
     #[serde(default)]
     pub agents: BTreeMap<String, AgentSettings>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSettings {
+    #[serde(default)]
+    pub locale: Locale,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -104,6 +114,7 @@ impl Settings {
 
     pub fn set(&mut self, key: &str, value: String) -> Result<(), String> {
         match key {
+            "ui.locale" => self.ui.locale = Locale::parse(&value)?,
             "agent" | "create.agent" => self.create.agent = Some(value),
             "create.model" => self.create.model = Some(value),
             "create.effort" => self.create.effort = Some(value),

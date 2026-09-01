@@ -1,11 +1,12 @@
 use std::ffi::OsString;
 
 use crate::help;
+use crate::i18n::I18n;
 use crate::metadata::Registry;
 
 use super::write_json;
 
-pub fn run(arguments: &[OsString], registry: &Registry) -> Result<i32, String> {
+pub fn run(arguments: &[OsString], registry: &Registry, i18n: &I18n) -> Result<i32, String> {
     let mut name = None;
     let mut json = false;
     for argument in arguments {
@@ -28,7 +29,7 @@ pub fn run(arguments: &[OsString], registry: &Registry) -> Result<i32, String> {
     if json {
         write_json("info", command)?;
     } else {
-        help::print_info(command);
+        help::print_info(command, i18n);
     }
     Ok(0)
 }

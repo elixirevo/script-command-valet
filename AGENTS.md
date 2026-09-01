@@ -53,6 +53,9 @@ When developing SCV:
 14. At the end of each cohesive work unit, stage only its changes, preserve unrelated
     worktree and index changes, run proportional verification, and use the canonical
     `scv-commit` skill. Do not batch independent work units into one catch-all commit.
+15. Keep builtin metadata and machine-readable JSON canonical in English. Embedded
+    locale catalogs may localize native human output without rewriting external
+    command metadata or requiring runtime downloads.
 
 Do not duplicate the full project rules in agent- or model-specific files. Point
 repository-development files back to `docs/SCRIPT_GUIDE.md` instead. Root
