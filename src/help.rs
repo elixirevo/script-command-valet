@@ -9,6 +9,10 @@ pub fn print_top(registry: &Registry, i18n: &I18n) {
 
     println!("{}", i18n.text("help.usage"));
     println!("  scv <command> [arguments]");
+    println!(
+        "  scv \"<natural-language request>\" [--locale <en|ko>] [--agent <agent>] [--model <model>]"
+    );
+    println!("      [--effort <level>] [--agent-option <key=value>] [--yes] [--no-input]");
     println!("  scv <command> --help");
     println!("  scv --help");
     println!();

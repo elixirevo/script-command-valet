@@ -6,7 +6,7 @@ use crate::activation;
 use crate::agent::{self, Effort, GenerateRequest};
 use crate::command::platform_label;
 use crate::config::Settings;
-use crate::generation::{self, GenerationWorkspace};
+use crate::generation::{self, GenerationMode, GenerationWorkspace};
 use crate::i18n::Locale;
 use crate::input;
 use crate::metadata::{Registry, valid_name};
@@ -103,6 +103,7 @@ pub fn run(arguments: &[OsString], paths: &AppPaths, _registry: &Registry) -> Re
         description,
         options.name.as_deref(),
         output_locale,
+        GenerationMode::Persistent,
         reserved_names,
     );
     println!("Generating command package with {}...", adapter.name());

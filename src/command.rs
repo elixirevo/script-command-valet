@@ -30,6 +30,20 @@ pub fn run_external(
     paths: &AppPaths,
 ) -> Result<i32, String> {
     crate::activation::verify_current_package(paths, &metadata.name)?;
+    run_package(
+        metadata,
+        arguments,
+        &paths.active_package_dir(&metadata.name),
+        paths,
+    )
+}
+
+pub fn run_package(
+    metadata: &CommandMetadata,
+    arguments: &[OsString],
+    package_dir: &std::path::Path,
+    paths: &AppPaths,
+) -> Result<i32, String> {
     let platform = current_platform();
     let implementation = metadata.implementation_for(platform).ok_or_else(|| {
         let supported = metadata
@@ -45,7 +59,7 @@ pub fn run_external(
         )
     })?;
 
-    let entry_path = paths.active_package_entry_path(&metadata.name, implementation.entry);
+    let entry_path = package_dir.join(implementation.entry);
     let entry_metadata = fs::symlink_metadata(&entry_path).map_err(|error| {
         format!(
             "entry for '{}' was not found or could not be inspected: {}: {error}",
@@ -73,14 +87,8 @@ pub fn run_external(
     process.args(arguments);
     paths.apply_to(&mut process);
     process
-        .env(
-            "SCV_COMMAND_PACKAGE_DIR",
-            paths.active_package_dir(&metadata.name),
-        )
-        .env(
-            "SCV_COMMAND_METADATA",
-            paths.active_package_metadata_path(&metadata.name),
-        );
+        .env("SCV_COMMAND_PACKAGE_DIR", package_dir)
+        .env("SCV_COMMAND_METADATA", package_dir.join("metadata.toml"));
 
     let status = process.status().map_err(|error| {
         if error.kind() == std::io::ErrorKind::NotFound {

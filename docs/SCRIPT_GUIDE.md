@@ -9,22 +9,25 @@ conflicts with this guide, update them together using this guide as the authorit
 - The only public executable and namespace is `scv`, or `scv.exe` on Windows.
 - Releases, development code, documentation, and environment variables must not
   expose another executable name or compatibility alias.
-- Dispatch, help, `init`, `add`, `rm`, `list`, `info`, `config`, `create`, `apply`,
-  `status`, `rollback`, `paths`, and `sync` are native Rust builtins.
+- Dispatch, help, `init`, `add`, `rm`, `list`, `info`, `config`, `create`, `history`,
+  `apply`, `status`, `rollback`, `paths`, and `sync` are native Rust builtins.
 - External commands exist only in the user's `SCV_HOME/commands/<command>/` packages.
   The product repository does not contain a user command library.
 - Builtin metadata lives in `src/builtin/metadata/`; external metadata lives in each
   package's `metadata.toml`.
 - The product repository must not contain `bin/`, a root `commands/`, or a root
   `scv.toml`. Use `cargo run -- <arguments>` for development.
-- The canonical invocation is `scv <command> [arguments]`.
+- Persistent commands use `scv <command> [arguments]`. A natural-language request
+  containing whitespace or non-ASCII text uses `scv "<request>" [options]` for one
+  validated, confirmed execution.
 
 SCV is a pre-release greenfield application. Do not implement legacy data paths,
 environment variables, flat metadata, migration commands, or deprecation aliases.
 
 ## 2. Source and execution boundary
 
-An installed SCV never executes code directly from its Git source.
+An installed SCV never executes code directly from its Git source or an agent's
+generation workspace.
 
 ```text
 ~/.scv/commands/                 portable source
@@ -44,6 +47,17 @@ scv <command>                    current activation only
   `current` file.
 - Validation or apply failure leaves the previous activation active.
 - Product development has no exception that dispatches source directly.
+- A one-shot request is copied from the isolated generation workspace to
+  `<data>/history/<id>/package/<command>/`, revalidated, hashed, and recorded in a
+  machine-local manifest before execution. It never enters `SCV_HOME` or an
+  activation.
+- SCV executes one-shot history only after revalidating the stored package and
+  comparing its SHA-256 digest. Both initial runs and reruns require explicit
+  confirmation, or `--yes` on the fully specified non-interactive path.
+- One-shot execution and `scv history run <id>` use the caller's current working
+  directory. The original directory is stored for audit display only.
+- SCV retains the newest 100 one-shot entries and removes older entries only after a
+  new entry has been committed.
 
 Follow `docs/STORAGE_ARCHITECTURE.md` and `docs/SYNC_ARCHITECTURE.md` for detailed
 path and synchronization contracts.
@@ -286,8 +300,9 @@ SCV provides these variables at execution time:
 
 ## 10. Agent-powered generation
 
-`scv create` is an optional layer that turns natural language into a persistent
-command package.
+Agent-powered generation is optional. `scv create` turns natural language into a
+persistent command package; `scv "<request>"` generates a zero-input package for one
+confirmed execution and machine-local history.
 
 - Keep deployed resources under `assets/generation/`.
 - Embedded prompts must be complete without external `AGENTS.md`, `CLAUDE.md`, Skill,
@@ -297,7 +312,13 @@ command package.
   untrusted user request and defines exactly which human-facing fields are localized.
 - The adapter uses a temporary workspace as its working directory and receives no SCV
   source or activation path. SCV consumes only results under `generated/`.
-- Never execute generated output. Install it only after validator and user approval.
+- Never execute from the generation workspace. Persistent `create` output is
+  installed only after validation and approval. One-shot output is validated and
+  previewed before approval, then copied to history, revalidated, hashed, and
+  executed from that stored copy.
+- One-shot packages declare no arguments or options, support the current platform,
+  do not prompt, and resolve relative paths from the process current working
+  directory.
 - Model and provider options cannot alter SCV's sandbox, approval, network, or other
   security boundaries.
 - Supported local agent commands are `codex`, `claude`, and `agy`. An adapter must

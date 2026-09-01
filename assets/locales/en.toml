@@ -48,3 +48,46 @@
 "init.remote" = "Git origin"
 "init.complete" = "SCV setup is complete."
 "init.next_steps" = "Commit the source with Git, then use 'scv sync push' when you are ready to upload it."
+"oneshot.generating" = "Generating a one-shot package with {agent}..."
+"oneshot.preview" = "Generated one-shot command:"
+"oneshot.warning" = "Generated code is untrusted; SCV validated its package contract and syntax, not its intended behavior."
+"oneshot.confirm" = "Save to history, prune entries beyond 100, and run this command? [y/N] "
+"oneshot.cancelled" = "Cancelled. Nothing was saved or run."
+"oneshot.saved" = "Saved to history: {id}"
+"oneshot.running" = "Running in the current working directory..."
+"history.empty" = "No one-shot history is available."
+"history.agent" = "agent"
+"history.risk" = "risk"
+"history.network" = "network"
+"history.working_directory" = "working directory"
+"history.preview" = "Stored one-shot command:"
+"history.original_working_directory" = "original working directory"
+"history.execution_working_directory" = "execution working directory"
+"history.confirm" = "Run this stored command? [y/N] "
+"history.running" = "Running in the current working directory..."
+
+[builtins.history]
+description = "List and rerun validated one-shot command history."
+effects = [
+  "reads machine-local one-shot command history",
+  "revalidates a stored package and its SHA-256 digest before rerunning it",
+  "runs the selected stored package in the current working directory after confirmation",
+  "may perform local, remote, or destructive effects declared by the stored package",
+]
+notes = [
+  "History is machine-local and is not added to the Git-backed command source.",
+  "Reruns use the current working directory, not the directory recorded when the entry was created.",
+  "SCV retains the newest 100 entries and removes older entries after saving a new one-shot command.",
+]
+
+[builtins.history.arguments]
+action = "Action: list or run"
+id = "History entry ID required by run"
+
+[builtins.history.options]
+"--json" = "Print list results as a machine-readable JSON array"
+"--yes" = "Skip confirmation before rerunning the stored package"
+"--no-input" = "Disable prompts; rerunning also requires --yes"
+
+[builtins.history.defaults]
+action = "list"

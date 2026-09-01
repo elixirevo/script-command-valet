@@ -48,6 +48,49 @@
 "init.remote" = "Git origin"
 "init.complete" = "SCV 설정을 완료했습니다."
 "init.next_steps" = "Git으로 소스를 커밋한 뒤 업로드할 준비가 되면 'scv sync push'를 사용하세요."
+"oneshot.generating" = "{agent}로 일회성 package를 생성합니다..."
+"oneshot.preview" = "생성된 일회성 command:"
+"oneshot.warning" = "생성 코드는 신뢰되지 않습니다. SCV는 package 계약과 문법을 검증했지만 의도한 동작까지 검증하지는 않았습니다."
+"oneshot.confirm" = "history에 저장하고 100개를 넘는 이전 항목을 정리한 뒤 이 command를 실행할까요? [y/N] "
+"oneshot.cancelled" = "취소했습니다. 저장하거나 실행한 항목이 없습니다."
+"oneshot.saved" = "history에 저장했습니다: {id}"
+"oneshot.running" = "현재 작업 디렉터리에서 실행합니다..."
+"history.empty" = "일회성 실행 history가 없습니다."
+"history.agent" = "agent"
+"history.risk" = "위험도"
+"history.network" = "네트워크"
+"history.working_directory" = "작업 디렉터리"
+"history.preview" = "저장된 일회성 command:"
+"history.original_working_directory" = "원래 작업 디렉터리"
+"history.execution_working_directory" = "실행 작업 디렉터리"
+"history.confirm" = "이 저장된 command를 실행할까요? [y/N] "
+"history.running" = "현재 작업 디렉터리에서 실행합니다..."
+
+[builtins.history]
+description = "검증된 일회성 command history를 표시하고 다시 실행합니다."
+effects = [
+  "machine-local 일회성 command history를 읽습니다",
+  "다시 실행하기 전에 저장된 package와 SHA-256 digest를 재검증합니다",
+  "확인 후 선택한 package를 현재 작업 디렉터리에서 실행합니다",
+  "저장된 package가 선언한 로컬, 원격 또는 파괴적 효과를 수행할 수 있습니다",
+]
+notes = [
+  "History는 machine-local이며 Git 기반 command source에 추가되지 않습니다.",
+  "재실행은 항목을 생성한 디렉터리가 아니라 현재 작업 디렉터리를 사용합니다.",
+  "SCV는 최신 100개 항목을 보존하고 새 일회성 command를 저장한 뒤 더 오래된 항목을 제거합니다.",
+]
+
+[builtins.history.arguments]
+action = "동작: list 또는 run"
+id = "run에 필요한 history 항목 ID"
+
+[builtins.history.options]
+"--json" = "list 결과를 기계 판독 가능한 JSON 배열로 출력"
+"--yes" = "저장된 package를 다시 실행하기 전 확인을 생략"
+"--no-input" = "질문을 금지; 재실행에는 --yes도 필요"
+
+[builtins.history.defaults]
+action = "list"
 
 [builtins.init]
 description = "SCV 소스, 기본 설정, Git 저장소 설정을 초기화합니다."
@@ -193,7 +236,7 @@ effects = ["로컬 SCV command metadata를 읽습니다"]
 
 [builtins.paths]
 description = "현재 플랫폼에서 SCV가 사용하는 경로를 표시합니다."
-effects = ["SCV source, data, config, cache 경로를 확인합니다"]
+effects = ["SCV source, data, history, config, cache 경로를 확인합니다"]
 
 [builtins.paths.options]
 "--json" = "경로를 JSON으로 출력"

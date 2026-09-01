@@ -9,6 +9,7 @@ pub struct AppPaths {
     pub source_command_dir: PathBuf,
     pub data_dir: PathBuf,
     pub activations_dir: PathBuf,
+    pub history_dir: PathBuf,
     pub state_dir: PathBuf,
     pub current_path: PathBuf,
     pub active_command_dir: PathBuf,
@@ -52,6 +53,7 @@ impl AppPaths {
     ) -> Result<Self, String> {
         ensure_source_isolation(&source_home, [&data_dir, &config_dir, &cache_dir])?;
         let activations_dir = data_dir.join("activations");
+        let history_dir = data_dir.join("history");
         let state_dir = data_dir.join("state");
         let current_path = data_dir.join("current");
         let active_command_dir = resolve_active_command_dir(&current_path, &activations_dir)?
@@ -61,6 +63,7 @@ impl AppPaths {
             source_home,
             data_dir,
             activations_dir,
+            history_dir,
             state_dir,
             current_path,
             active_command_dir,
@@ -79,7 +82,7 @@ impl AppPaths {
     }
 
     pub fn ensure_data_dirs(&self) -> Result<(), String> {
-        for directory in [&self.activations_dir, &self.state_dir] {
+        for directory in [&self.activations_dir, &self.history_dir, &self.state_dir] {
             fs::create_dir_all(directory).map_err(|error| {
                 format!(
                     "could not create SCV data directory '{}': {error}",
@@ -123,12 +126,9 @@ impl AppPaths {
         self.active_command_dir.join(command)
     }
 
+    #[cfg(test)]
     pub fn active_package_entry_path(&self, command: &str, entry: &str) -> PathBuf {
         self.active_package_dir(command).join(entry)
-    }
-
-    pub fn active_package_metadata_path(&self, command: &str) -> PathBuf {
-        self.active_package_dir(command).join("metadata.toml")
     }
 
     pub fn apply_to(&self, command: &mut std::process::Command) {
@@ -254,6 +254,7 @@ mod tests {
             root.join("data/inactive/commands")
         );
         assert_ne!(paths.source_command_dir, paths.active_command_dir);
+        assert_eq!(paths.history_dir, root.join("data/history"));
     }
 
     #[test]

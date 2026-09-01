@@ -1,8 +1,10 @@
 use std::collections::BTreeSet;
 use std::fs;
-use std::io;
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+use sha2::{Digest, Sha256};
 
 use crate::command::python_runtime;
 use crate::metadata::{CommandMetadata, Registry};
@@ -24,6 +26,55 @@ pub struct ValidatedPackage {
 
 pub fn validate_generated(path: &Path) -> Result<ValidatedPackage, String> {
     validate_package(path, true)
+}
+
+pub fn validate_one_shot(path: &Path) -> Result<ValidatedPackage, String> {
+    let package = validate_generated(path)?;
+    if !package.metadata.arguments.is_empty() || !package.metadata.options.is_empty() {
+        return Err("one-shot packages cannot declare arguments or options".to_string());
+    }
+    if package.metadata.supports_dry_run {
+        return Err("one-shot packages cannot declare dry-run support".to_string());
+    }
+    if package
+        .metadata
+        .implementation_for(crate::command::current_platform())
+        .is_none()
+    {
+        return Err(format!(
+            "one-shot package '{}' does not support the current platform",
+            package.metadata.name
+        ));
+    }
+    Ok(package)
+}
+
+pub fn digest_validated(package: &ValidatedPackage) -> Result<String, String> {
+    let mut hasher = Sha256::new();
+    for relative in &package.files {
+        let path = package.path.join(relative);
+        hasher.update(relative.as_bytes());
+        hasher.update([0]);
+        let mut file = fs::File::open(&path)
+            .map_err(|error| format!("could not hash '{}': {error}", path.display()))?;
+        let mut buffer = [0_u8; 16 * 1024];
+        loop {
+            let read = file
+                .read(&mut buffer)
+                .map_err(|error| format!("could not hash '{}': {error}", path.display()))?;
+            if read == 0 {
+                break;
+            }
+            hasher.update(&buffer[..read]);
+        }
+        hasher.update([0]);
+    }
+    let mut output = String::with_capacity(64);
+    for byte in hasher.finalize() {
+        use std::fmt::Write as _;
+        let _ = write!(&mut output, "{byte:02x}");
+    }
+    Ok(output)
 }
 
 pub fn validate_source(path: &Path) -> Result<ValidatedPackage, String> {
@@ -495,7 +546,7 @@ mod tests {
     use crate::metadata::Registry;
     use crate::paths::AppPaths;
 
-    use super::{install_validated, validate_generated};
+    use super::{install_validated, validate_generated, validate_one_shot};
 
     #[test]
     fn validates_a_complete_generated_package() {
@@ -530,6 +581,19 @@ entry = "main.py"
         let validated = validate_generated(&package).expect("package should validate");
         assert_eq!(validated.metadata.name, "sample");
         assert!(validated.files.contains(&"metadata.toml".to_string()));
+
+        let metadata =
+            fs::read_to_string(package.join("metadata.toml")).expect("metadata should be readable");
+        fs::write(
+            package.join("metadata.toml"),
+            format!(
+                "{metadata}\n[[arguments]]\nname = \"path\"\nrequired = true\ndescription = \"Path to read\"\n"
+            ),
+        )
+        .expect("metadata should be changed");
+        let error = validate_one_shot(&package)
+            .expect_err("one-shot packages with arguments should be rejected");
+        assert!(error.contains("cannot declare arguments or options"));
         fs::remove_dir_all(root).expect("fixture should be removed");
     }
 

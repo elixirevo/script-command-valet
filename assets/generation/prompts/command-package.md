@@ -1,6 +1,8 @@
 # SCV generated command-package contract
 
-This document is the complete authoring contract for packages created by `scv create`.
+This document is the complete authoring contract for packages created by SCV's
+persistent and one-shot generation modes. The injected request states which mode
+applies and adds its stricter requirements.
 
 ## Package shape and names
 

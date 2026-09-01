@@ -8,7 +8,7 @@ platforms = ["windows", "linux", "macos"]
 risk = "read"
 network = false
 supports_dry_run = false
-effects = ["reads resolved SCV source, data, config, and cache paths"]
+effects = ["reads resolved SCV source, data, history, config, and cache paths"]
 
 [[options]]
 long = "--json"

@@ -11,6 +11,7 @@ struct PathsOutput {
     source_commands: String,
     data: String,
     activations: String,
+    history: String,
     state: String,
     current: String,
     active_commands: String,
@@ -32,6 +33,7 @@ pub fn run(arguments: &[OsString], paths: &AppPaths) -> Result<i32, String> {
         source_commands: display(&paths.source_command_dir),
         data: display(&paths.data_dir),
         activations: display(&paths.activations_dir),
+        history: display(&paths.history_dir),
         state: display(&paths.state_dir),
         current: display(&paths.current_path),
         active_commands: display(&paths.active_command_dir),
@@ -46,6 +48,7 @@ pub fn run(arguments: &[OsString], paths: &AppPaths) -> Result<i32, String> {
         println!("  source commands : {}", output.source_commands);
         println!("  data            : {}", output.data);
         println!("  activations     : {}", output.activations);
+        println!("  history         : {}", output.history);
         println!("  state           : {}", output.state);
         println!("  current         : {}", output.current);
         println!("  active commands : {}", output.active_commands);

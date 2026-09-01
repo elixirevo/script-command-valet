@@ -2,6 +2,7 @@ mod add;
 mod apply;
 mod config;
 mod create;
+mod history;
 mod info;
 mod init;
 mod list;
@@ -32,6 +33,7 @@ pub fn run(
         "apply" => apply::run(arguments, paths),
         "config" => config::run(arguments, paths, i18n),
         "create" => create::run(arguments, paths, registry),
+        "history" => history::run(arguments, paths, i18n),
         "rm" => remove::run(arguments, paths, registry),
         "list" => list::run(arguments, registry, i18n),
         "info" => info::run(arguments, registry, i18n),

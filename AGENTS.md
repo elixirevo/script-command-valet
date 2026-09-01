@@ -59,9 +59,14 @@ When developing SCV:
 16. Keep first-run setup equivalent to explicit `scv init`: implicit setup is only
     for an argument-free TTY session and never contacts a remote, commits, pushes, or
     overwrites an existing Git origin.
-17. Keep generated-package localization explicit: `create --locale` overrides
-    `ui.locale`, applies only to free-form user-facing text, and stores one authored
-    language without translating identifiers or existing packages.
+17. Keep generated-package localization explicit: `--locale` on persistent or
+    one-shot generation overrides `ui.locale`, applies only to free-form user-facing
+    text, and stores one authored language without translating identifiers or
+    existing packages.
+18. Never execute an agent generation workspace. One-shot requests must run only a
+    revalidated, SHA-256-recorded machine-local history copy after explicit consent;
+    history reruns revalidate, require consent again, and use the caller's current
+    working directory.
 
 Do not duplicate the full project rules in agent- or model-specific files. Point
 repository-development files back to `docs/SCRIPT_GUIDE.md` instead. Root

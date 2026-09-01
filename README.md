@@ -44,6 +44,9 @@ SCV separates the portable Git source from machine-local executable state.
 ├── activations/<id>/
 │   ├── manifest.toml
 │   └── commands/
+├── history/<id>/
+│   ├── manifest.toml
+│   └── package/<command>/
 ├── current
 └── state/
 ```
@@ -180,6 +183,26 @@ shows a change summary before approval. Only a fast-forward is accepted. Git and
 
 ## Agent-powered creation
 
+Generate, inspect, save, and immediately run a one-shot command:
+
+```bash
+scv "현재 디렉터리의 큰 파일 10개를 보여줘"
+scv "Count files by extension" --agent claude --yes --no-input
+scv history
+scv history run <id>
+scv history run <id> --yes --no-input
+```
+
+SCV never executes an agent's workspace. It validates the zero-input package,
+previews its declared risk, network use, effects, implementation, and syntax checks,
+then asks for consent. After consent it commits a revalidated SHA-256-protected copy
+under machine-local history and executes that copy in the current working directory.
+Every rerun revalidates integrity, uses the caller's current directory, and requires
+fresh consent. The newest 100 entries are retained; history is not added to the Git
+source.
+
+Create a persistent reusable command:
+
 ```bash
 scv create "Show directory sizes in descending order" --agent codex
 scv create "Sort a JSON file" --name json-sort --agent codex --effort high
@@ -188,10 +211,11 @@ scv create "Summarize TOML keys" --agent agy --effort medium
 scv create "현재 디렉터리의 파일 수를 세어줘" --locale ko --agent agy
 ```
 
-`scv create` explicitly injects the complete provider-neutral contract embedded from
-`assets/generation/` and starts the selected adapter in an isolated temporary
-workspace. SCV consumes only the package under `generated/`, validates it, asks for
-installation consent, writes it to the Git source, and creates a new activation.
+Both generation modes explicitly inject the complete provider-neutral contract
+embedded from `assets/generation/` and start the selected adapter in an isolated
+temporary workspace. Persistent `scv create` consumes only the package under
+`generated/`, validates it, asks for installation consent, writes it to the Git
+source, and creates a new activation.
 Generated descriptions, effects, argument/option help, notes, and runtime messages
 use `--locale`, or `ui.locale` when omitted. Each user package stores that one
 authored language; changing the UI locale later does not rewrite existing commands.

@@ -10,6 +10,7 @@ const BUILTIN_SPECS: &[&str] = &[
     include_str!("builtin/metadata/apply.toml"),
     include_str!("builtin/metadata/config.toml"),
     include_str!("builtin/metadata/create.toml"),
+    include_str!("builtin/metadata/history.toml"),
     include_str!("builtin/metadata/info.toml"),
     include_str!("builtin/metadata/init.toml"),
     include_str!("builtin/metadata/list.toml"),

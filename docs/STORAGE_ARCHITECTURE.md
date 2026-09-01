@@ -47,6 +47,10 @@ SCV does not download language packs at runtime.
 │   └── <id>/
 │       ├── manifest.toml
 │       └── commands/
+├── history/
+│   └── <id>/
+│       ├── manifest.toml
+│       └── package/<command>/
 ├── current
 └── state/
 ```
@@ -84,6 +88,25 @@ therefore rejected with an `apply`/`rollback` recovery instruction.
 Any error before step 8 leaves the previous activation current. A committed but
 unused activation may remain if only the final pointer write fails; it is harmless
 and may be cleaned by a later successful apply.
+
+## One-shot history
+
+`scv "<request>"` never writes to the Git-backed source or activation tree. The
+selected agent writes only to its isolated generation workspace. After package
+validation and user consent, SCV copies the package to a staged history entry,
+revalidates the copy, computes its SHA-256 digest, writes a machine-local manifest,
+and atomically renames the entry into `<data>/history/<id>/` before execution.
+
+The manifest records the request, output locale, agent and optional model, original
+working directory, package safety summary, creation time, and package digest. This
+data can contain user-supplied text, so the history directory is private to the user
+on Unix. History is not portable and is never synchronized by Git.
+
+`scv history run <id>` validates the package and compares its digest with the
+manifest before every rerun. Initial execution and reruns both use the caller's
+current working directory and require confirmation; `--no-input` requires separate
+`--yes` authorization. SCV retains the newest 100 entries and removes older entries
+after a new entry has been committed. History tampering rejects execution.
 
 ## Product repository boundary
 

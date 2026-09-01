@@ -52,6 +52,10 @@ layout, security boundaries, or external side effects.
 - Keep `scv create` optional. Agents may write only to an isolated workspace; SCV
   owns validation and installation. Embedded resources under `assets/generation/`
   must be complete without runtime access to repository docs or agent files.
+- Keep one-shot generation on the same isolated boundary. Execute only the
+  revalidated, SHA-256-recorded machine-local history copy after explicit consent;
+  reruns must revalidate integrity, require new consent, and use the caller's current
+  working directory.
 - Keep credentials with the provider CLI or system Git. Do not weaken sandbox,
   approval, confirmation, non-TTY, or dry-run boundaries through model options.
 - Keep the Codex, Claude, and Agy adapters explicit and provider-specific. Reject
@@ -65,9 +69,10 @@ layout, security boundaries, or external side effects.
 - Keep first-run setup equivalent to the explicit `scv init` builtin. It may run
   implicitly only for an argument-free TTY session and must not contact a remote,
   commit, push, or overwrite an existing Git origin.
-- Keep generated-package localization explicit: `create --locale` overrides
-  `ui.locale`, applies only to free-form user-facing text, and stores one authored
-  language without translating identifiers or existing packages.
+- Keep generated-package localization explicit: `--locale` on persistent or
+  one-shot generation overrides `ui.locale`, applies only to free-form user-facing
+  text, and stores one authored language without translating identifiers or existing
+  packages.
 
 ## Implement and review
 

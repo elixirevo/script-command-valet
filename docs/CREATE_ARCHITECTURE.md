@@ -1,16 +1,18 @@
-# `scv create` Architecture
+# SCV Agent-Powered Generation Architecture
 
 ## Product goal and boundary
 
-`scv create` does not translate natural language into a shell string for one-time
-execution. It is an optional generation layer that turns a natural-language request
-into a persistent command package with SCV metadata, implementations,
-platform/runtime contracts, help, safety information, and a managed lifecycle.
+SCV exposes two optional agent-powered generation modes. `scv create` turns a
+natural-language request into a persistent managed command package. `scv
+"<request>"` generates a zero-input package for one confirmed execution, stores its
+validated copy in machine-local history, and supports later confirmed reruns through
+`scv history run <id>`.
 
 The required SCV core continues to work without an agent. `add`, `rm`, `list`,
-`info`, help, and dispatch do not depend on AI or authentication. Only `create`
-invokes an agent CLI that the user has already installed and authenticated. SCV does
-not store agent accounts or credentials.
+`info`, help, history replay, and persistent dispatch do not depend on AI or
+authentication. Only a new generation request invokes an agent CLI that the user has
+already installed and authenticated. SCV does not store agent accounts or
+credentials.
 
 ## Trust boundary
 
@@ -31,16 +33,17 @@ SCV package validator
     ├── symlink and special-file rejection
     ├── file count/size/depth limits
     └── available runtime syntax checks
-            ↓
-preview and explicit install consent
-            ↓
-shared atomic package installer
-            ↓
-~/.scv/commands/<command>/ source
-            ↓ full library validation
-immutable machine-local activation
-            ↓ atomic current switch
-scv <command>
+            ↓ preview and explicit consent
+       ┌────┴──────────────────────────────┐
+       │ persistent create                │ one-shot request
+       ↓                                  ↓
+shared atomic package installer     staged machine-local history copy
+       ↓                                  ↓ revalidation + SHA-256 manifest
+~/.scv/commands/<command>/ source   <data>/history/<id>/package/<command>/
+       ↓ full library validation           ↓
+immutable machine-local activation  execute in caller's current directory
+       ↓ atomic current switch             ↓
+scv <command>                       scv history run <id>
 ```
 
 SCV sets the temporary workspace as the adapter's working directory. The Codex
@@ -50,10 +53,13 @@ The Agy adapter uses `--sandbox`, `accept-edits` mode, and disables slash-comman
 skill expansion. None of the adapters receives the user's SCV command-library path,
 and SCV consumes exactly one package directly under `generated/` as the result.
 
-SCV does not trust or install generated output immediately; the SCV validator is the
-authority. SCV revalidates a staging copy immediately before updating source. After
-source changes, it copies and revalidates the complete library into a new activation.
-The previous execution state remains active until the atomic `current` switch.
+SCV does not trust or execute generated workspace output; the SCV validator is the
+authority. Persistent create revalidates a staging copy before updating source, then
+copies and revalidates the complete library into a new activation. One-shot mode
+requires no package arguments or options, requires the current platform, copies the
+package into history, revalidates and hashes the copy, and executes only that stored
+copy after approval. History reruns repeat package and digest validation and require
+new approval.
 
 ## Rust module boundaries
 
@@ -67,8 +73,13 @@ The previous execution state remains active until the atomic `current` switch.
 - `src/activation.rs`: complete source validation, immutable activation, digests,
   and the `current` switch.
 - `src/config.rs`: storage, resolution, and precedence for create and agent settings.
+- `src/oneshot.rs`: top-level natural-language detection, generation, preview,
+  consent, history commit, and immediate dispatch.
+- `src/history.rs`: machine-local one-shot manifests, package copies, digest checks,
+  listing, and retention.
 - `src/builtin/create.rs`: coordinates only the user flow and does not own provider
   or storage details.
+- `src/builtin/history.rs`: lists history and coordinates confirmed reruns.
 - `docs/SCRIPT_GUIDE.md`: canonical repository-development and platform-behavior
   guide. It is not a runtime resource for the installed binary.
 - `assets/generation/prompts/`: complete provider-neutral generation contracts
@@ -80,16 +91,17 @@ The previous execution state remains active until the atomic `current` switch.
   `command.ps1.tmpl`; materialization removes `.tmpl` in the temporary workspace.
 
 Root `AGENTS.md` and `CLAUDE.md` are entrypoints for developers who run an agent from
-the product repository. They are not copied into the temporary workspace created by
-`scv create`. SCV supplies the prompt directly, so provider-specific file discovery
-is not part of the generation contract.
+the product repository. They are not copied into a temporary generation workspace.
+SCV supplies the prompt directly, so provider-specific file discovery is not part of
+the generation contract.
 
 ## Generated package language
 
-`scv create --locale <en|ko>` selects the single authored language for free-form
-package metadata and runtime messages. Without the option, create uses the
-machine-local `ui.locale` preference. SCV injects this policy before the escaped
-untrusted request, so text in the requested behavior cannot replace it.
+`scv create --locale <en|ko>` and the equivalent one-shot option select the single
+authored language for free-form package metadata and runtime messages. Without the
+option, generation uses the machine-local `ui.locale` preference. SCV injects this
+policy before the escaped untrusted request, so text in the requested behavior
+cannot replace it.
 
 Descriptions, effects, argument and option descriptions, defaults, notes, and
 package-owned user messages use the selected language. Schema keys and enum values,
@@ -103,7 +115,7 @@ does not rewrite or dynamically translate an installed user command.
 Configuration precedence is:
 
 ```text
-create CLI option
+generation CLI option
     ↓
 [agents.<selected-agent>]
     ↓
@@ -115,7 +127,7 @@ agent CLI default
 Generated output language has its own simpler precedence:
 
 ```text
-create --locale
+generation --locale
     ↓
 ui.locale
     ↓

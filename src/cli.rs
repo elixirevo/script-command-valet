@@ -8,6 +8,7 @@ use crate::help;
 use crate::i18n::I18n;
 use crate::input;
 use crate::metadata::Registry;
+use crate::oneshot;
 use crate::paths::AppPaths;
 
 pub fn run() -> Result<i32, String> {
@@ -40,7 +41,7 @@ pub fn run() -> Result<i32, String> {
         .unwrap_or("");
     let registry = match Registry::load(&paths) {
         Ok(registry) => registry,
-        Err(error) if recovery_builtin(requested) => {
+        Err(error) if recovery_builtin(requested) || looks_like_one_shot(requested) => {
             eprintln!(
                 "scv: warning: {}",
                 i18n.format(
@@ -58,6 +59,14 @@ pub fn run() -> Result<i32, String> {
     if arguments.is_empty() {
         help::print_top(&registry, &i18n);
         return Ok(0);
+    }
+
+    if oneshot::is_request(&arguments, &registry) {
+        if requests_help(&arguments[1..]) {
+            help::print_top(&registry, &i18n);
+            return Ok(0);
+        }
+        return oneshot::run(&arguments, &paths, &registry, &i18n);
     }
 
     let command = arguments.remove(0);
@@ -92,6 +101,7 @@ fn recovery_builtin(command: &str) -> bool {
             | "apply"
             | "config"
             | "create"
+            | "history"
             | "init"
             | "paths"
             | "rm"
@@ -99,6 +109,10 @@ fn recovery_builtin(command: &str) -> bool {
             | "status"
             | "sync"
     )
+}
+
+fn looks_like_one_shot(value: &str) -> bool {
+    value.chars().any(char::is_whitespace) || !value.is_ascii()
 }
 
 fn should_auto_initialize(arguments_empty: bool, initialized: bool, interactive: bool) -> bool {

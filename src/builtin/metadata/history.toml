@@ -1,0 +1,61 @@
+name = "history"
+category = "system"
+description = "List and rerun validated one-shot command history."
+usage = "scv history [list [--json] | run <id> [--yes] [--no-input]]"
+builtin = true
+runtime = "builtin"
+platforms = ["windows", "linux", "macos"]
+risk = "destructive"
+network = true
+supports_dry_run = false
+effects = [
+  "reads machine-local one-shot command history",
+  "revalidates a stored package and its SHA-256 digest before rerunning it",
+  "runs the selected stored package in the current working directory after confirmation",
+  "may perform local, remote, or destructive effects declared by the stored package",
+]
+
+[[arguments]]
+name = "action"
+required = false
+description = "Action: list or run"
+default = "list"
+
+[[arguments]]
+name = "id"
+required = false
+description = "History entry ID required by run"
+
+[[options]]
+long = "--json"
+description = "Print list results as a machine-readable JSON array"
+
+[[options]]
+short = "-y"
+long = "--yes"
+description = "Skip confirmation before rerunning the stored package"
+
+[[options]]
+long = "--no-input"
+description = "Disable prompts; rerunning also requires --yes"
+
+[[notes]]
+text = "History is machine-local and is not added to the Git-backed command source."
+
+[[notes]]
+text = "Reruns use the current working directory, not the directory recorded when the entry was created."
+
+[[notes]]
+text = "SCV retains the newest 100 entries and removes older entries after saving a new one-shot command."
+
+[[examples]]
+command = "scv history"
+
+[[examples]]
+command = "scv history --json"
+
+[[examples]]
+command = "scv history run 1750000000000-a1b2c3d4e5f6"
+
+[[examples]]
+command = "scv history run 1750000000000-a1b2c3d4e5f6 --yes --no-input"
