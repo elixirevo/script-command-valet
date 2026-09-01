@@ -185,12 +185,16 @@ scv create "Show directory sizes in descending order" --agent codex
 scv create "Sort a JSON file" --name json-sort --agent codex --effort high
 scv create "Count the number of files" --agent claude --yes --no-input
 scv create "Summarize TOML keys" --agent agy --effort medium
+scv create "현재 디렉터리의 파일 수를 세어줘" --locale ko --agent agy
 ```
 
 `scv create` explicitly injects the complete provider-neutral contract embedded from
 `assets/generation/` and starts the selected adapter in an isolated temporary
 workspace. SCV consumes only the package under `generated/`, validates it, asks for
 installation consent, writes it to the Git source, and creates a new activation.
+Generated descriptions, effects, argument/option help, notes, and runtime messages
+use `--locale`, or `ui.locale` when omitted. Each user package stores that one
+authored language; changing the UI locale later does not rewrite existing commands.
 See [create architecture](docs/CREATE_ARCHITECTURE.md) for adapter and validation
 boundaries.
 

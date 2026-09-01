@@ -7,6 +7,7 @@ use crate::agent::{self, Effort, GenerateRequest};
 use crate::command::platform_label;
 use crate::config::Settings;
 use crate::generation::{self, GenerationWorkspace};
+use crate::i18n::Locale;
 use crate::input;
 use crate::metadata::{Registry, valid_name};
 use crate::package;
@@ -17,6 +18,7 @@ use crate::source;
 struct CreateOptions {
     description: Option<String>,
     name: Option<String>,
+    locale: Option<Locale>,
     agent: Option<String>,
     model: Option<String>,
     effort: Option<String>,
@@ -65,6 +67,7 @@ pub fn run(arguments: &[OsString], paths: &AppPaths, _registry: &Registry) -> Re
     }
 
     let settings = Settings::load(paths)?;
+    let output_locale = options.locale.unwrap_or(settings.ui.locale);
     let resolved = settings.resolve_create(
         options.agent,
         options.model,
@@ -96,9 +99,15 @@ pub fn run(arguments: &[OsString], paths: &AppPaths, _registry: &Registry) -> Re
         .names()
         .filter(|name| !(options.force && options.name.as_deref() == Some(*name)))
         .collect::<Vec<_>>();
-    let prompt = generation::build_prompt(description, options.name.as_deref(), reserved_names);
+    let prompt = generation::build_prompt(
+        description,
+        options.name.as_deref(),
+        output_locale,
+        reserved_names,
+    );
     println!("Generating command package with {}...", adapter.name());
     println!("  executable : {}", adapter.executable());
+    println!("  language   : {}", output_locale.as_str());
     if let Some(model) = resolved.model.as_deref() {
         println!("  model      : {model}");
     }
@@ -174,6 +183,11 @@ fn parse(arguments: &[OsString]) -> Result<CreateOptions, String> {
                 argument,
                 value(arguments, &mut index, argument)?,
             )?,
+            "--locale" => {
+                let locale = value(arguments, &mut index, argument)?;
+                let locale = Locale::parse(&locale).map_err(|error| usage_error(&error))?;
+                set_option(&mut options.locale, argument, locale)?;
+            }
             "-a" | "--agent" => set_option(
                 &mut options.agent,
                 argument,
@@ -309,6 +323,7 @@ mod tests {
     use std::ffi::OsString;
 
     use super::parse;
+    use crate::i18n::Locale;
 
     #[test]
     fn parses_a_fully_specified_noninteractive_request() {
@@ -318,6 +333,8 @@ mod tests {
             "codex",
             "--model",
             "model",
+            "--locale",
+            "ko",
             "--effort",
             "high",
             "--yes",
@@ -327,6 +344,7 @@ mod tests {
         let options = parse(&arguments).expect("arguments should parse");
         assert_eq!(options.description.as_deref(), Some("make a tool"));
         assert_eq!(options.agent.as_deref(), Some("codex"));
+        assert_eq!(options.locale, Some(Locale::Ko));
         assert!(options.yes);
         assert!(options.no_input);
     }
@@ -342,5 +360,12 @@ mod tests {
         ]
         .map(OsString::from);
         assert!(parse(&arguments).is_err());
+    }
+
+    #[test]
+    fn rejects_an_unsupported_generation_locale() {
+        let arguments = ["make a tool", "--locale", "fr"].map(OsString::from);
+        let error = parse(&arguments).err().expect("locale should be rejected");
+        assert!(error.contains("supported locales: en, ko"));
     }
 }

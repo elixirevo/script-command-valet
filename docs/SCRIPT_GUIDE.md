@@ -150,6 +150,12 @@ Do not mix progress messages or explanatory text into JSON stdout.
   `en`; `scv config set ui.locale <en|ko>` changes the machine-local preference.
 - Locale catalogs may translate only core-owned human output and builtin metadata
   views. They do not rewrite user-owned external command metadata.
+- `scv create --locale <en|ko>` selects the authored language for a new external
+  package; when omitted it uses `ui.locale`. The generated package stores one
+  language for its free-form metadata and runtime messages, so changing `ui.locale`
+  later does not translate an existing user command.
+- Generated localization never translates schema keys, enum values, identifiers,
+  command or option names, usage syntax, file names, or required protocol literals.
 - `scv list --json`, `scv info <command> --json`, and other JSON contracts remain
   locale-independent. In particular, builtin metadata serialized as JSON remains
   the canonical English metadata.
@@ -287,6 +293,8 @@ command package.
 - Embedded prompts must be complete without external `AGENTS.md`, `CLAUDE.md`, Skill,
   or `docs/` content.
 - SCV injects the prompt explicitly and does not depend on provider file discovery.
+- The explicit prompt places the selected output language outside the escaped,
+  untrusted user request and defines exactly which human-facing fields are localized.
 - The adapter uses a temporary workspace as its working directory and receives no SCV
   source or activation path. SCV consumes only results under `generated/`.
 - Never execute generated output. Install it only after validator and user approval.

@@ -59,6 +59,9 @@ When developing SCV:
 16. Keep first-run setup equivalent to explicit `scv init`: implicit setup is only
     for an argument-free TTY session and never contacts a remote, commits, pushes, or
     overwrites an existing Git origin.
+17. Keep generated-package localization explicit: `create --locale` overrides
+    `ui.locale`, applies only to free-form user-facing text, and stores one authored
+    language without translating identifiers or existing packages.
 
 Do not duplicate the full project rules in agent- or model-specific files. Point
 repository-development files back to `docs/SCRIPT_GUIDE.md` instead. Root

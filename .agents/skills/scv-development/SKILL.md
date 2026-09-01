@@ -65,6 +65,9 @@ layout, security boundaries, or external side effects.
 - Keep first-run setup equivalent to the explicit `scv init` builtin. It may run
   implicitly only for an argument-free TTY session and must not contact a remote,
   commit, push, or overwrite an existing Git origin.
+- Keep generated-package localization explicit: `create --locale` overrides
+  `ui.locale`, applies only to free-form user-facing text, and stores one authored
+  language without translating identifiers or existing packages.
 
 ## Implement and review
 

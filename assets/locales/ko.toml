@@ -152,6 +152,7 @@ effects = [
 notes = [
   "agent는 임시 workspace에만 쓰며 SCV validator와 installer만 command library를 변경합니다.",
   "stdin이 터미널이 아니면 자동으로 입력을 금지합니다.",
+  "생성 package는 선택한 언어 하나를 원문으로 저장하므로 나중에 ui.locale을 바꿔도 기존 사용자 command는 번역되지 않습니다.",
 ]
 
 [builtins.create.arguments]
@@ -159,6 +160,7 @@ description = "영구 command로 만들 자연어 요구사항"
 
 [builtins.create.options]
 "--name" = "생성할 command 이름을 고정"
+"--locale" = "생성되는 사용자 노출 문구의 언어"
 "--agent" = "사용할 로컬 coding-agent adapter"
 "--model" = "agent에 그대로 전달할 model 이름"
 "--effort" = "agent가 지원하는 공통 reasoning effort"
@@ -169,6 +171,7 @@ description = "영구 command로 만들 자연어 요구사항"
 
 [builtins.create.defaults]
 "--agent" = "config 또는 codex"
+"--locale" = "ui.locale"
 
 [builtins.info]
 description = "명령의 도움말과 런타임 정보를 표시합니다."

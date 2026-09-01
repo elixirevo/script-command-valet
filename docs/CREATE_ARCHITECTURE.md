@@ -84,6 +84,20 @@ the product repository. They are not copied into the temporary workspace created
 `scv create`. SCV supplies the prompt directly, so provider-specific file discovery
 is not part of the generation contract.
 
+## Generated package language
+
+`scv create --locale <en|ko>` selects the single authored language for free-form
+package metadata and runtime messages. Without the option, create uses the
+machine-local `ui.locale` preference. SCV injects this policy before the escaped
+untrusted request, so text in the requested behavior cannot replace it.
+
+Descriptions, effects, argument and option descriptions, defaults, notes, and
+package-owned user messages use the selected language. Schema keys and enum values,
+identifiers, command/category/argument/option names, usage and example syntax, file
+names, runtime/platform/risk tokens, and required protocol literals stay canonical.
+The package does not contain parallel translations, and changing `ui.locale` later
+does not rewrite or dynamically translate an installed user command.
+
 ## Configuration and adapter contract
 
 Configuration precedence is:
@@ -96,6 +110,16 @@ create CLI option
 [create]
     ↓
 agent CLI default
+```
+
+Generated output language has its own simpler precedence:
+
+```text
+create --locale
+    ↓
+ui.locale
+    ↓
+en
 ```
 
 `model` is an opaque string whose values SCV does not enumerate. `effort` accepts

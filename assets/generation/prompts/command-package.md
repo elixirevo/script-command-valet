@@ -58,6 +58,22 @@ one or more concrete observable effects.
 
 `builtin` is always `false`. Generated packages never use builtin metadata fields.
 
+### Localization
+
+The SCV generation request specifies one output language. Write all free-form
+human-facing text in that language:
+
+- metadata `description`, `effects`, argument and option descriptions, defaults, and
+  notes;
+- implementation success, warning, validation, and failure messages; and
+- other package-owned text shown to the command user.
+
+Keep schema keys and enum values, command/category/argument/option names, usage and
+example syntax, file names, runtime/platform/risk tokens, and the required
+`Try 'scv <command> --help' for more information.` suffix in their canonical form.
+Do not create parallel locale files or multiple translations in one package. The
+generated package stores the single selected language as authored text.
+
 ### Implementations
 
 Declare one or more `[[implementations]]` entries. Every entry requires:

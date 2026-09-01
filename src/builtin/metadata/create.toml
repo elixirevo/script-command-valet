@@ -1,7 +1,7 @@
 name = "create"
 category = "system"
 description = "Create a validated persistent SCV command package from a natural-language request."
-usage = "scv create <description> [--name <command>] [--agent <agent>] [--model <model>] [--effort <level>] [--yes] [--no-input]"
+usage = "scv create <description> [--name <command>] [--locale <en|ko>] [--agent <agent>] [--model <model>] [--effort <level>] [--yes] [--no-input]"
 builtin = true
 runtime = "builtin"
 platforms = ["windows", "linux", "macos"]
@@ -29,11 +29,17 @@ value = "<command>"
 description = "Require the generated command to use this name"
 
 [[options]]
+long = "--locale"
+value = "<en|ko>"
+description = "Language for generated human-facing text"
+default = "ui.locale"
+
+[[options]]
 short = "-a"
 long = "--agent"
 value = "<codex|claude|agy>"
 description = "Local coding-agent adapter to use"
-default = "config 또는 codex"
+default = "config or codex"
 
 [[options]]
 short = "-m"
@@ -72,6 +78,9 @@ text = "The agent writes only to a temporary workspace; only the SCV validator a
 [[notes]]
 text = "SCV automatically disables prompts when stdin is not a terminal."
 
+[[notes]]
+text = "Generated packages store one authored language; changing ui.locale later does not translate existing user commands."
+
 [[examples]]
 command = "scv create \"Show directory sizes in descending order\""
 
@@ -80,3 +89,6 @@ command = "scv create \"Sort a JSON file\" --name json-sort --agent codex --mode
 
 [[examples]]
 command = "scv create \"Count files in the current directory\" --agent claude --yes --no-input"
+
+[[examples]]
+command = "scv create \"현재 디렉터리의 파일 수를 세어줘\" --locale ko --agent agy --yes --no-input"
