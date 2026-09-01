@@ -56,6 +56,9 @@ When developing SCV:
 15. Keep builtin metadata and machine-readable JSON canonical in English. Embedded
     locale catalogs may localize native human output without rewriting external
     command metadata or requiring runtime downloads.
+16. Keep first-run setup equivalent to explicit `scv init`: implicit setup is only
+    for an argument-free TTY session and never contacts a remote, commits, pushes, or
+    overwrites an existing Git origin.
 
 Do not duplicate the full project rules in agent- or model-specific files. Point
 repository-development files back to `docs/SCRIPT_GUIDE.md` instead. Root

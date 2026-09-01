@@ -9,8 +9,8 @@ conflicts with this guide, update them together using this guide as the authorit
 - The only public executable and namespace is `scv`, or `scv.exe` on Windows.
 - Releases, development code, documentation, and environment variables must not
   expose another executable name or compatibility alias.
-- Dispatch, help, `add`, `rm`, `list`, `info`, `config`, `create`, `apply`, `status`,
-  `rollback`, `paths`, and `sync` are native Rust builtins.
+- Dispatch, help, `init`, `add`, `rm`, `list`, `info`, `config`, `create`, `apply`,
+  `status`, `rollback`, `paths`, and `sync` are native Rust builtins.
 - External commands exist only in the user's `SCV_HOME/commands/<command>/` packages.
   The product repository does not contain a user command library.
 - Builtin metadata lives in `src/builtin/metadata/`; external metadata lives in each
@@ -233,6 +233,21 @@ SCV provides these variables at execution time:
 - `SCV_COMMAND_METADATA`
 
 ## 9. Management commands
+
+### First-run setup and `scv init`
+
+- An argument-free first run starts interactive setup only when `scv.toml` is
+  missing and stdin is a terminal. Help, version, explicit commands, and non-TTY
+  runs never trigger setup as a side effect.
+- Setup selects the embedded `en` or `ko` locale, a default `codex`, `claude`, or
+  `agy` create adapter, and an optional Git `origin`.
+- `scv init --no-input` is fully specified by defaults. `--dry-run` validates and
+  prints all target paths and values without creating source, config, or Git state.
+- Init creates the local source manifest and Git repository. An optional remote is
+  configuration only: init does not contact a network, create a hosted repository,
+  store credentials, commit, or push.
+- Reject HTTP(S) remotes containing user information, query credentials, or
+  fragments. Existing conflicting `origin` configuration is never overwritten.
 
 ### `scv add`
 

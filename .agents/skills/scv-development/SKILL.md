@@ -62,6 +62,9 @@ layout, security boundaries, or external side effects.
 - Keep builtin metadata and machine-readable JSON canonical in English. Embedded
   locale catalogs may localize core-owned human views without rewriting external
   command metadata or requiring a runtime download.
+- Keep first-run setup equivalent to the explicit `scv init` builtin. It may run
+  implicitly only for an argument-free TTY session and must not contact a remote,
+  commit, push, or overwrite an existing Git origin.
 
 ## Implement and review
 

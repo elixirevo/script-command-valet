@@ -9,6 +9,13 @@ the user has approved the preview.
 SCV delegates authentication, credential storage, remotes, branches, commits, and
 conflict resolution to system Git or `gh`. SCV never stores GitHub tokens.
 
+## Setup
+
+`scv init` initializes the local source repository and may save a user-supplied URL
+or path as `origin`. This is a local configuration operation: it does not access the
+remote, create a hosted repository, commit, or push. Credential-bearing HTTP(S) URLs
+are rejected, and an existing conflicting `origin` is preserved.
+
 ## Status
 
 `scv sync status` is local and reports:

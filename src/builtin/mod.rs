@@ -3,6 +3,7 @@ mod apply;
 mod config;
 mod create;
 mod info;
+mod init;
 mod list;
 mod paths;
 mod remove;
@@ -34,6 +35,7 @@ pub fn run(
         "rm" => remove::run(arguments, paths, registry),
         "list" => list::run(arguments, registry, i18n),
         "info" => info::run(arguments, registry, i18n),
+        "init" => init::run(arguments, paths, i18n),
         "paths" => paths::run(arguments, paths),
         "rollback" => rollback::run(arguments, paths),
         "status" => status::run(arguments, paths),

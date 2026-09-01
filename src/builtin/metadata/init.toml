@@ -1,0 +1,56 @@
+name = "init"
+category = "system"
+description = "Initialize SCV source, preferences, and Git repository settings."
+usage = "scv init [--locale <en|ko>] [--agent <codex|claude|agy>] [--remote <url>] [--dry-run] [--no-input]"
+builtin = true
+runtime = "builtin"
+platforms = ["windows", "linux", "macos"]
+risk = "write"
+network = false
+supports_dry_run = true
+effects = [
+  "creates the SCV source manifest and command directory",
+  "initializes a local Git repository when needed",
+  "writes machine-local locale and create-agent preferences",
+  "adds the Git origin remote when --remote is provided",
+]
+
+[[options]]
+long = "--locale"
+value = "<en|ko>"
+description = "UI locale"
+default = "existing setting or en"
+
+[[options]]
+long = "--agent"
+value = "<codex|claude|agy>"
+description = "Default local coding-agent command for create"
+default = "existing setting or codex"
+
+[[options]]
+long = "--remote"
+value = "<url>"
+description = "Git URL or path to save as origin without contacting it"
+
+[[options]]
+long = "--dry-run"
+description = "Show the initialization plan without changing files"
+
+[[options]]
+long = "--no-input"
+description = "Disable prompts and use defaults for unspecified settings"
+
+[[notes]]
+text = "Init does not create a remote repository, access the network, store credentials, commit, or push."
+
+[[notes]]
+text = "Running scv without arguments starts init only when setup is missing and stdin is a terminal."
+
+[[examples]]
+command = "scv init"
+
+[[examples]]
+command = "scv init --locale ko --agent agy --remote git@github.com:owner/scv-commands.git --no-input"
+
+[[examples]]
+command = "scv init --locale en --agent codex --dry-run --no-input"

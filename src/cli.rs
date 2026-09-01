@@ -6,6 +6,7 @@ use crate::command;
 use crate::config::Settings;
 use crate::help;
 use crate::i18n::I18n;
+use crate::input;
 use crate::metadata::Registry;
 use crate::paths::AppPaths;
 
@@ -22,6 +23,15 @@ pub fn run() -> Result<i32, String> {
     {
         println!("scv {}", env!("CARGO_PKG_VERSION"));
         return Ok(0);
+    }
+
+    if should_auto_initialize(
+        arguments.is_empty(),
+        paths.source_manifest_path().exists(),
+        input::is_enabled(false),
+    ) {
+        let registry = Registry::builtins()?;
+        return builtin::run("init", &[], &paths, &registry, &i18n);
     }
 
     let requested = arguments
@@ -78,8 +88,21 @@ pub fn run() -> Result<i32, String> {
 fn recovery_builtin(command: &str) -> bool {
     matches!(
         command,
-        "add" | "apply" | "config" | "create" | "paths" | "rm" | "rollback" | "status" | "sync"
+        "add"
+            | "apply"
+            | "config"
+            | "create"
+            | "init"
+            | "paths"
+            | "rm"
+            | "rollback"
+            | "status"
+            | "sync"
     )
+}
+
+fn should_auto_initialize(arguments_empty: bool, initialized: bool, interactive: bool) -> bool {
+    arguments_empty && !initialized && interactive
 }
 
 fn requests_help(arguments: &[OsString]) -> bool {
@@ -97,7 +120,7 @@ fn requests_help(arguments: &[OsString]) -> bool {
 mod tests {
     use std::ffi::OsString;
 
-    use super::{recovery_builtin, requests_help};
+    use super::{recovery_builtin, requests_help, should_auto_initialize};
 
     #[test]
     fn detects_help_before_the_option_terminator() {
@@ -114,5 +137,13 @@ mod tests {
         assert!(recovery_builtin("rollback"));
         assert!(!recovery_builtin("list"));
         assert!(!recovery_builtin("user-command"));
+    }
+
+    #[test]
+    fn auto_initializes_only_for_an_interactive_first_run() {
+        assert!(should_auto_initialize(true, false, true));
+        assert!(!should_auto_initialize(false, false, true));
+        assert!(!should_auto_initialize(true, true, true));
+        assert!(!should_auto_initialize(true, false, false));
     }
 }

@@ -1,6 +1,6 @@
 name = "config"
 category = "system"
-description = "View or change SCV create and agent defaults."
+description = "View or change machine-local SCV settings."
 usage = "scv config [show [--json] | set <key> <value> [--dry-run]]"
 builtin = true
 runtime = "builtin"

@@ -12,6 +12,19 @@ SCV embeds English and Korean UI catalogs. English is the default; choose Korean
 with `scv config set ui.locale ko`. Human help for native builtins follows that
 setting, while JSON output and user-owned command metadata remain unchanged.
 
+On the first interactive run, `scv` offers setup for the UI locale, default
+`codex`/`claude`/`agy` create agent, and an optional Git upload remote. The equivalent
+automation-safe form is:
+
+```bash
+scv init --locale ko --agent agy \
+  --remote git@github.com:owner/scv-commands.git \
+  --no-input
+```
+
+Init only initializes local source and Git settings. It does not access the network,
+create the hosted repository, commit, or push.
+
 ## Architecture
 
 SCV separates the portable Git source from machine-local executable state.

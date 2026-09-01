@@ -94,3 +94,9 @@ overrides and never dispatch source directly.
 
 SCV does not auto-discover a nearby repository and never interprets `SCV_DATA_DIR`
 as source storage.
+
+On a first interactive argument-free run, SCV offers `scv init`. Init creates the
+source manifest and command directory, initializes Git metadata inside `SCV_HOME`,
+and writes locale and create-agent preferences to machine-local config. `--dry-run`
+creates none of these paths. Help, version, explicit commands, and non-TTY execution
+do not implicitly initialize storage.
