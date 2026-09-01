@@ -31,7 +31,7 @@ description = "Require the generated command to use this name"
 [[options]]
 short = "-a"
 long = "--agent"
-value = "<codex|claude>"
+value = "<codex|claude|agy>"
 description = "Local coding-agent adapter to use"
 default = "config 또는 codex"
 

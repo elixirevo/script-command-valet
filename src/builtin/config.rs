@@ -154,6 +154,7 @@ mod tests {
     #[test]
     fn validates_known_agents_and_portable_effort() {
         assert!(validate_value("agent", "codex").is_ok());
+        assert!(validate_value("agent", "agy").is_ok());
         assert!(validate_value("agent", "unknown").is_err());
         assert!(validate_value("effort", "high").is_ok());
         assert!(validate_value("effort", "auto").is_err());

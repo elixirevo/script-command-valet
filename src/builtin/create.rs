@@ -87,6 +87,9 @@ pub fn run(arguments: &[OsString], paths: &AppPaths, _registry: &Registry) -> Re
         .map(Effort::parse)
         .transpose()
         .map_err(|error| format!("create: {error}"))?;
+    adapter
+        .validate_effort(effort)
+        .map_err(|error| format!("create: {error}"))?;
 
     let workspace = GenerationWorkspace::create()?;
     let reserved_names = registry

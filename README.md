@@ -171,6 +171,7 @@ shows a change summary before approval. Only a fast-forward is accepted. Git and
 scv create "Show directory sizes in descending order" --agent codex
 scv create "Sort a JSON file" --name json-sort --agent codex --effort high
 scv create "Count the number of files" --agent claude --yes --no-input
+scv create "Summarize TOML keys" --agent agy --effort medium
 ```
 
 `scv create` explicitly injects the complete provider-neutral contract embedded from
@@ -179,6 +180,10 @@ workspace. SCV consumes only the package under `generated/`, validates it, asks 
 installation consent, writes it to the Git source, and creates a new activation.
 See [create architecture](docs/CREATE_ARCHITECTURE.md) for adapter and validation
 boundaries.
+
+The `codex`, `claude`, and `agy` adapters invoke their corresponding authenticated
+local CLI. The Agy adapter enforces its sandbox, disables slash-command and skill
+expansion, and supports `low`, `medium`, or `high` effort.
 
 ## Development contract
 

@@ -45,10 +45,10 @@ scv <command>
 
 SCV sets the temporary workspace as the adapter's working directory. The Codex
 adapter uses the `workspace-write` sandbox and disables persistence and user
-customization. The Claude adapter sets the workspace as its current directory and
-uses `--safe-mode` with a restricted file-tool set. Neither adapter receives the
-user's SCV command-library path, and SCV consumes exactly one package directly under
-`generated/` as the result.
+customization. The Claude adapter uses `--safe-mode` with a restricted file-tool set.
+The Agy adapter uses `--sandbox`, `accept-edits` mode, and disables slash-command and
+skill expansion. None of the adapters receives the user's SCV command-library path,
+and SCV consumes exactly one package directly under `generated/` as the result.
 
 SCV does not trust or install generated output immediately; the SCV validator is the
 authority. SCV revalidates a staging copy immediately before updating source. After
@@ -57,7 +57,7 @@ The previous execution state remains active until the atomic `current` switch.
 
 ## Rust module boundaries
 
-- `src/agent/`: common requests and provider adapters. Codex and Claude are currently
+- `src/agent/`: common requests and provider adapters. Codex, Claude, and Agy are
   supported.
 - `src/generation.rs`: combines the provider-neutral prompt from
   `assets/generation/`, materializes generation-only templates into a temporary
@@ -99,17 +99,22 @@ agent CLI default
 ```
 
 `model` is an opaque string whose values SCV does not enumerate. `effort` accepts
-only `low`, `medium`, `high`, `xhigh`, and `max`, which the current adapters can both
-represent. Codex provider-specific settings use `--agent-option key=value`; SCV
-rejects keys that would change its selected model or sandbox, approval, and network
-boundaries. SCV does not invent mappings for portable effort or generic options when
-a provider does not support them.
+only `low`, `medium`, `high`, `xhigh`, and `max`; Agy supports only the first three
+and rejects the other levels before starting. Codex provider-specific settings use
+`--agent-option key=value`; SCV rejects keys that would change its selected model or
+sandbox, approval, and network boundaries. SCV does not invent mappings for portable
+effort or generic options when a provider does not support them.
 
 The Codex adapter disables user configuration and execpolicy rules, sets the project
 instruction byte limit to zero, and sends the common prompt over stdin. The Claude
 adapter uses `--safe-mode` to disable customization, including `CLAUDE.md`, and sends
 the same common prompt over stdin. Provider adapters do not own or duplicate the
 generation contract in provider-specific files.
+
+The Agy CLI accepts its print-mode prompt as an argument. SCV supplies the complete
+common prompt there, uses a bounded print timeout, and does not use
+`--dangerously-skip-permissions`. Agy owns its installed authentication and other
+provider state; SCV does not copy that state into the generation workspace.
 
 ## Validation limits
 

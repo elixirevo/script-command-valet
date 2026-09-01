@@ -1,3 +1,4 @@
+mod agy;
 mod claude;
 mod codex;
 
@@ -50,6 +51,9 @@ pub trait AgentAdapter {
     fn name(&self) -> &'static str;
     fn executable(&self) -> &'static str;
     fn supports_agent_options(&self) -> bool;
+    fn validate_effort(&self, _effort: Option<Effort>) -> Result<(), String> {
+        Ok(())
+    }
     fn generate(&self, request: &GenerateRequest<'_>) -> Result<(), String>;
 }
 
@@ -57,8 +61,9 @@ pub fn adapter(name: &str) -> Result<Box<dyn AgentAdapter>, String> {
     match name {
         "codex" => Ok(Box::new(codex::CodexAdapter)),
         "claude" => Ok(Box::new(claude::ClaudeAdapter)),
+        "agy" => Ok(Box::new(agy::AgyAdapter)),
         _ => Err(format!(
-            "unsupported agent '{name}'; supported agents: codex, claude"
+            "unsupported agent '{name}'; supported agents: codex, claude, agy"
         )),
     }
 }

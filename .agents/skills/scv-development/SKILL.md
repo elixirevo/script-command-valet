@@ -54,6 +54,9 @@ layout, security boundaries, or external side effects.
   must be complete without runtime access to repository docs or agent files.
 - Keep credentials with the provider CLI or system Git. Do not weaken sandbox,
   approval, confirmation, non-TTY, or dry-run boundaries through model options.
+- Keep the Codex, Claude, and Agy adapters explicit and provider-specific. Reject
+  unsupported effort or option translation instead of weakening or approximating
+  the provider boundary.
 - Keep public behavior native on macOS, Linux, and Windows. Do not introduce Unix-only
   assumptions into Rust core behavior or Windows paths.
 - Keep builtin metadata and machine-readable JSON canonical in English. Embedded

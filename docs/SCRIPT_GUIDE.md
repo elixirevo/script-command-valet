@@ -277,6 +277,9 @@ command package.
 - Never execute generated output. Install it only after validator and user approval.
 - Model and provider options cannot alter SCV's sandbox, approval, network, or other
   security boundaries.
+- Supported local agent commands are `codex`, `claude`, and `agy`. An adapter must
+  reject a requested effort or provider option that its CLI cannot represent rather
+  than silently mapping it.
 
 Follow `docs/CREATE_ARCHITECTURE.md` for the detailed contract.
 
