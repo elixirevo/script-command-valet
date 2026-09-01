@@ -211,9 +211,12 @@ scv create "Summarize TOML keys" --agent agy --effort medium
 scv create "현재 디렉터리의 파일 수를 세어줘" --locale ko --agent agy
 ```
 
-Both generation modes explicitly inject the complete provider-neutral contract
-embedded from `assets/generation/` and start the selected adapter in an isolated
-temporary workspace. Persistent `scv create` consumes only the package under
+Both generation modes explicitly inject a shared provider-neutral package contract
+plus exactly one embedded mode contract from `assets/generation/`. The workspace
+contains only that mode's metadata and source templates: persistent generation gets
+argument/option/help scaffolding, while one-shot generation gets exact zero-input
+usage and no persistent interaction scaffolding. The selected adapter starts in the
+isolated temporary workspace. Persistent `scv create` consumes only the package under
 `generated/`, validates it, asks for installation consent, writes it to the Git
 source, and creates a new activation.
 Generated descriptions, effects, argument/option help, notes, and runtime messages

@@ -30,8 +30,24 @@ pub fn validate_generated(path: &Path) -> Result<ValidatedPackage, String> {
 
 pub fn validate_one_shot(path: &Path) -> Result<ValidatedPackage, String> {
     let package = validate_generated(path)?;
+    let expected_invocation = format!("scv {}", package.metadata.name);
+    if package.metadata.usage != expected_invocation {
+        return Err(format!(
+            "one-shot package usage must be exactly '{expected_invocation}'"
+        ));
+    }
     if !package.metadata.arguments.is_empty() || !package.metadata.options.is_empty() {
         return Err("one-shot packages cannot declare arguments or options".to_string());
+    }
+    if package
+        .metadata
+        .examples
+        .iter()
+        .any(|example| example.command != expected_invocation)
+    {
+        return Err(format!(
+            "one-shot package examples must be exactly '{expected_invocation}'"
+        ));
     }
     if package.metadata.supports_dry_run {
         return Err("one-shot packages cannot declare dry-run support".to_string());
@@ -581,9 +597,19 @@ entry = "main.py"
         let validated = validate_generated(&package).expect("package should validate");
         assert_eq!(validated.metadata.name, "sample");
         assert!(validated.files.contains(&"metadata.toml".to_string()));
+        validate_one_shot(&package).expect("zero-input package should validate as one-shot");
 
         let metadata =
             fs::read_to_string(package.join("metadata.toml")).expect("metadata should be readable");
+        fs::write(
+            package.join("metadata.toml"),
+            metadata.replace("usage = \"scv sample\"", "usage = \"scv sample [options]\""),
+        )
+        .expect("metadata usage should be changed");
+        let error = validate_one_shot(&package)
+            .expect_err("one-shot packages with non-exact usage should be rejected");
+        assert!(error.contains("usage must be exactly"));
+
         fs::write(
             package.join("metadata.toml"),
             format!(
@@ -594,6 +620,15 @@ entry = "main.py"
         let error = validate_one_shot(&package)
             .expect_err("one-shot packages with arguments should be rejected");
         assert!(error.contains("cannot declare arguments or options"));
+
+        fs::write(
+            package.join("metadata.toml"),
+            format!("{metadata}\n[[examples]]\ncommand = \"scv sample --all\"\n"),
+        )
+        .expect("metadata example should be changed");
+        let error = validate_one_shot(&package)
+            .expect_err("one-shot packages with non-exact examples should be rejected");
+        assert!(error.contains("examples must be exactly"));
         fs::remove_dir_all(root).expect("fixture should be removed");
     }
 

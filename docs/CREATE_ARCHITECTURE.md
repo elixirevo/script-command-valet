@@ -18,9 +18,10 @@ credentials.
 
 ```text
 user request + provider-neutral embedded prompt
-    ├── complete generation boundary
-    └── complete command-package contract
-            ↓ create builtin combines and explicitly injects
+    ├── shared generation boundary
+    ├── shared command-package contract
+    └── exactly one mode contract: persistent or one-shot
+            ↓ SCV combines and explicitly injects
        provider adapter
             ↓ uses workspace as working directory
 isolated temporary workspace
@@ -65,9 +66,9 @@ new approval.
 
 - `src/agent/`: common requests and provider adapters. Codex, Claude, and Agy are
   supported.
-- `src/generation.rs`: combines the provider-neutral prompt from
-  `assets/generation/`, materializes generation-only templates into a temporary
-  workspace, and removes the complete workspace on exit.
+- `src/generation.rs`: combines shared provider-neutral contracts with exactly one
+  mode contract from `assets/generation/`, materializes only that mode's templates
+  under stable workspace names, and removes the complete workspace on exit.
 - `src/package.rs`: generated-package validation and the atomic installer shared by
   `add` and `create`.
 - `src/activation.rs`: complete source validation, immutable activation, digests,
@@ -82,13 +83,13 @@ new approval.
 - `src/builtin/history.rs`: lists history and coordinates confirmed reruns.
 - `docs/SCRIPT_GUIDE.md`: canonical repository-development and platform-behavior
   guide. It is not a runtime resource for the installed binary.
-- `assets/generation/prompts/`: complete provider-neutral generation contracts
-  embedded in the installed binary. They do not refer to external `AGENTS.md`,
-  `CLAUDE.md`, Skill, or `docs/` paths.
-- `assets/generation/templates/`: generation-only source and metadata starting points
-  embedded in the installed binary. The repository stores them as
-  `command.toml.tmpl`, `command.sh.tmpl`, `command.js.tmpl`, `command.py.tmpl`, and
-  `command.ps1.tmpl`; materialization removes `.tmpl` in the temporary workspace.
+- `assets/generation/prompts/`: `instructions.md` and `command-package.md` are shared;
+  `persistent.md` and `one-shot.md` define mutually exclusive mode behavior. All are
+  embedded and do not refer to external `AGENTS.md`, `CLAUDE.md`, Skill, or `docs/`.
+- `assets/generation/templates/`: persistent `command.*.tmpl` and one-shot
+  `one-shot.*.tmpl` starting points are embedded. Materialization exposes only the
+  selected set as `templates/command.toml`, `command.sh`, `command.js`, `command.py`,
+  and `command.ps1` so an adapter cannot select the wrong mode template.
 
 Root `AGENTS.md` and `CLAUDE.md` are entrypoints for developers who run an agent from
 the product repository. They are not copied into a temporary generation workspace.
@@ -141,14 +142,23 @@ and rejects the other levels before starting. Codex provider-specific settings u
 sandbox, approval, and network boundaries. SCV does not invent mappings for portable
 effort or generic options when a provider does not support them.
 
+The shared prompt owns workspace confinement, package shape, runtimes, localization,
+safety metadata, and non-executing completion checks. The persistent contract alone
+owns arguments, options, metadata-rendered help, interactive automation, and dry-run
+rules. The one-shot contract instead requires exact zero-input usage, no arguments or
+options, no prompts, current-platform support, and current-working-directory path
+resolution. SCV injects the concrete current platform into that mode context. The
+one-shot validator enforces exact usage and examples in addition to the structural
+package checks.
+
 The Codex adapter disables user configuration and execpolicy rules, sets the project
-instruction byte limit to zero, and sends the common prompt over stdin. The Claude
+instruction byte limit to zero, and sends the composed prompt over stdin. The Claude
 adapter uses `--safe-mode` to disable customization, including `CLAUDE.md`, and sends
-the same common prompt over stdin. Provider adapters do not own or duplicate the
+the same composed prompt over stdin. Provider adapters do not own or duplicate the
 generation contract in provider-specific files.
 
 The Agy CLI accepts its print-mode prompt as an argument. SCV supplies the complete
-common prompt there, uses a bounded print timeout, and does not use
+composed prompt there, uses a bounded print timeout, and does not use
 `--dangerously-skip-permissions`. Agy owns its installed authentication and other
 provider state; SCV does not copy that state into the generation workspace.
 

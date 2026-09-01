@@ -87,7 +87,7 @@ pub fn run(
         .validate_effort(effort)
         .map_err(|error| format!("one-shot: {error}"))?;
 
-    let workspace = GenerationWorkspace::create()?;
+    let workspace = GenerationWorkspace::create(GenerationMode::OneShot)?;
     let prompt = generation::build_prompt(
         description,
         None,

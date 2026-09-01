@@ -94,7 +94,7 @@ pub fn run(arguments: &[OsString], paths: &AppPaths, _registry: &Registry) -> Re
         .validate_effort(effort)
         .map_err(|error| format!("create: {error}"))?;
 
-    let workspace = GenerationWorkspace::create()?;
+    let workspace = GenerationWorkspace::create(GenerationMode::Persistent)?;
     let reserved_names = registry
         .names()
         .filter(|name| !(options.force && options.name.as_deref() == Some(*name)))

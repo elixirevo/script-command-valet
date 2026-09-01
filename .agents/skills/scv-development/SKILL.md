@@ -56,6 +56,10 @@ layout, security boundaries, or external side effects.
   revalidated, SHA-256-recorded machine-local history copy after explicit consent;
   reruns must revalidate integrity, require new consent, and use the caller's current
   working directory.
+- Compose generation prompts from minimal shared contracts and exactly one mode
+  contract. Materialize only that mode's metadata and source templates; never expose
+  persistent argument, help, interaction, or dry-run scaffolding to one-shot
+  generation.
 - Keep credentials with the provider CLI or system Git. Do not weaken sandbox,
   approval, confirmation, non-TTY, or dry-run boundaries through model options.
 - Keep the Codex, Claude, and Agy adapters explicit and provider-specific. Reject

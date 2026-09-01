@@ -164,10 +164,10 @@ Do not mix progress messages or explanatory text into JSON stdout.
   `en`; `scv config set ui.locale <en|ko>` changes the machine-local preference.
 - Locale catalogs may translate only core-owned human output and builtin metadata
   views. They do not rewrite user-owned external command metadata.
-- `scv create --locale <en|ko>` selects the authored language for a new external
-  package; when omitted it uses `ui.locale`. The generated package stores one
-  language for its free-form metadata and runtime messages, so changing `ui.locale`
-  later does not translate an existing user command.
+- `--locale <en|ko>` on persistent or one-shot generation selects the authored
+  language for a new package; when omitted it uses `ui.locale`. The generated package
+  stores one language for its free-form metadata and runtime messages, so changing
+  `ui.locale` later does not translate an existing user command or history package.
 - Generated localization never translates schema keys, enum values, identifiers,
   command or option names, usage syntax, file names, or required protocol literals.
 - `scv list --json`, `scv info <command> --json`, and other JSON contracts remain
@@ -230,7 +230,7 @@ system approval remain separate behavioral contracts.
 
 ## 8. Language-specific source rules
 
-- Manage the source starting points used by `scv create` under
+- Manage the source starting points used by agent-powered generation under
   `assets/generation/templates/` and materialize them into the temporary generation
   workspace.
 - Keep repository-owned text, embedded prompts, and generation templates on LF line
@@ -307,6 +307,12 @@ confirmed execution and machine-local history.
 - Keep deployed resources under `assets/generation/`.
 - Embedded prompts must be complete without external `AGENTS.md`, `CLAUDE.md`, Skill,
   or `docs/` content.
+- Compose every request from a minimal shared generation/package contract and exactly
+  one mode contract. Persistent-only argument, option, help, prompt, and dry-run
+  guidance must not appear in a one-shot prompt.
+- Materialize only the selected mode's metadata and source templates under the
+  workspace `templates/` names. One-shot templates use exact zero-input usage and do
+  not contain persistent help or interaction scaffolding.
 - SCV injects the prompt explicitly and does not depend on provider file discovery.
 - The explicit prompt places the selected output language outside the escaped,
   untrusted user request and defines exactly which human-facing fields are localized.
@@ -319,6 +325,8 @@ confirmed execution and machine-local history.
 - One-shot packages declare no arguments or options, support the current platform,
   do not prompt, and resolve relative paths from the process current working
   directory.
+- One-shot metadata usage, and every example when present, is exactly
+  `scv <generated-name>`; the validator rejects persistent-style usage suffixes.
 - Model and provider options cannot alter SCV's sandbox, approval, network, or other
   security boundaries.
 - Supported local agent commands are `codex`, `claude`, and `agy`. An adapter must
