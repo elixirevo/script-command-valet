@@ -36,17 +36,22 @@
 "config.would_set" = "설정할 예정입니다: {key} = {value}"
 "config.set" = "설정했습니다: {key} = {value}"
 "init.already_initialized" = "SCV가 이미 초기화되어 있습니다: {path}"
+"init.not_initialized" = "SCV가 초기화되지 않았습니다. 먼저 'scv init'을 실행하세요."
 "init.agent_prompt" = "create 기본 agent [codex/claude/agy] ({default}): "
 "init.invalid_agent" = "codex, claude, agy 중 하나를 선택하세요."
 "init.remote_prompt" = "업로드용 Git remote (선택 사항, 건너뛰려면 Enter): "
+"init.remote_reconfigure_prompt" = "Git origin ({current}, 유지하려면 Enter, 제거하려면 '-'): "
 "init.plan" = "초기화 계획:"
 "init.setting_up" = "SCV를 설정합니다:"
+"init.reconfigure_plan" = "재설정 계획:"
+"init.reconfiguring" = "SCV를 재설정합니다:"
 "init.locale" = "로케일"
 "init.agent" = "create agent"
 "init.source" = "소스"
 "init.config" = "설정 파일"
 "init.remote" = "Git origin"
 "init.complete" = "SCV 설정을 완료했습니다."
+"init.reconfigure_complete" = "SCV 재설정을 완료했습니다."
 "init.next_steps" = "Git으로 소스를 커밋한 뒤 업로드할 준비가 되면 'scv sync push'를 사용하세요."
 "oneshot.generating" = "{agent}로 일회성 package를 생성합니다..."
 "oneshot.preview" = "생성된 일회성 command:"
@@ -98,17 +103,21 @@ effects = [
   "SCV source manifest와 command 디렉터리를 생성합니다",
   "필요하면 로컬 Git 저장소를 초기화합니다",
   "machine-local 로케일과 create agent 기본값을 저장합니다",
-  "--remote가 있으면 Git origin remote를 추가합니다",
+  "--remote가 있으면 Git origin remote를 추가하거나 재설정합니다",
+  "--reconfigure와 --no-remote를 함께 사용하면 기존 Git origin을 제거합니다",
 ]
 notes = [
   "init은 원격 저장소를 생성하거나 네트워크에 접근하지 않으며 credential 저장, commit, push도 하지 않습니다.",
   "인자 없는 scv 실행은 설정이 없고 stdin이 터미널일 때만 init을 시작합니다.",
+  "--reconfigure는 기존 source manifest와 command package를 보존합니다.",
 ]
 
 [builtins.init.options]
 "--locale" = "UI 로케일"
 "--agent" = "create에서 기본으로 사용할 로컬 coding-agent command"
 "--remote" = "접속하지 않고 origin으로 저장할 Git URL 또는 경로"
+"--reconfigure" = "기존 command source를 보존하면서 설정과 Git origin을 다시 구성"
+"--no-remote" = "재설정 중 기존 Git origin 제거"
 "--dry-run" = "파일을 변경하지 않고 초기화 계획만 표시"
 "--no-input" = "질문을 금지하고 지정하지 않은 설정에는 기본값 사용"
 

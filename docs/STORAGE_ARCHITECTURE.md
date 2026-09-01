@@ -123,3 +123,10 @@ source manifest and command directory, initializes Git metadata inside `SCV_HOME
 and writes locale and create-agent preferences to machine-local config. `--dry-run`
 creates none of these paths. Help, version, explicit commands, and non-TTY execution
 do not implicitly initialize storage.
+
+`scv init --reconfigure` reruns explicit setup without replacing `scv.toml` or any
+command package. It preserves unspecified machine-local settings and Git origin,
+may explicitly replace or remove `origin`, and repairs missing `.git` metadata. The
+operation remains local: it does not contact a remote, create a commit, push, or
+modify activation state. Reconfiguration dry-run reports the complete plan without
+changing source, Git configuration, or machine-local preferences.

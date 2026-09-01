@@ -11,13 +11,35 @@ use crate::input;
 use crate::paths::AppPaths;
 use crate::source;
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct InitOptions {
     locale: Option<String>,
     agent: Option<String>,
     remote: Option<String>,
+    reconfigure: bool,
+    no_remote: bool,
     dry_run: bool,
     no_input: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum RemoteSelection {
+    Keep,
+    Set(String),
+    Remove,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RemoteAction {
+    None,
+    Add,
+    SetUrl,
+    Remove,
+}
+
+struct RepositoryState {
+    initialize: bool,
+    origin: Option<String>,
 }
 
 struct InitPlan {
@@ -25,18 +47,26 @@ struct InitPlan {
     agent: String,
     remote: Option<String>,
     initialize_git: bool,
-    add_origin: bool,
+    remote_action: RemoteAction,
+    reconfigure: bool,
 }
 
 pub fn run(arguments: &[OsString], paths: &AppPaths, current_i18n: &I18n) -> Result<i32, String> {
-    if paths.source_manifest_path().exists() {
+    let options = parse(arguments)?;
+    let initialized = paths.source_manifest_path().exists();
+    if initialized && !options.reconfigure {
         return Err(current_i18n.format(
             "init.already_initialized",
             &[("path", &paths.source_manifest_path().display().to_string())],
         ));
     }
+    if !initialized && options.reconfigure {
+        return Err(current_i18n.text("init.not_initialized").to_string());
+    }
+    if options.no_remote && !options.reconfigure {
+        return Err(usage_error("--no-remote requires --reconfigure"));
+    }
 
-    let options = parse(arguments)?;
     let mut settings = Settings::load(paths)?;
     let interactive = input::is_enabled(options.no_input);
     let locale = match options.locale.as_deref() {
@@ -57,21 +87,27 @@ pub fn run(arguments: &[OsString], paths: &AppPaths, current_i18n: &I18n) -> Res
         None => default_agent,
     };
     agent::adapter(&selected_agent).map_err(|error| format!("init: {error}"))?;
-    let remote = match options.remote {
-        Some(remote) => Some(remote),
-        None if interactive => prompt_remote(&i18n)?,
-        None => None,
+    let repository = inspect_repository(paths)?;
+    let remote_selection = match options.remote {
+        Some(remote) => RemoteSelection::Set(remote),
+        None if options.no_remote => RemoteSelection::Remove,
+        None if interactive => {
+            prompt_remote(&i18n, repository.origin.as_deref(), options.reconfigure)?
+        }
+        None => RemoteSelection::Keep,
     };
-    if let Some(remote) = remote.as_deref() {
+    if let RemoteSelection::Set(remote) = &remote_selection {
         validate_remote(remote)?;
     }
-    let repository = inspect_repository(paths, remote.as_deref())?;
+    let (remote, remote_action) =
+        resolve_remote(repository.origin, remote_selection, options.reconfigure)?;
     let plan = InitPlan {
         locale,
         agent: selected_agent,
         remote,
         initialize_git: repository.initialize,
-        add_origin: repository.add_origin,
+        remote_action,
+        reconfigure: options.reconfigure,
     };
 
     print_plan(&plan, paths, &i18n, options.dry_run);
@@ -89,7 +125,14 @@ pub fn run(arguments: &[OsString], paths: &AppPaths, current_i18n: &I18n) -> Res
         .map_err(|error| format!("init: {error}"))?;
 
     println!();
-    println!("{}", i18n.text("init.complete"));
+    println!(
+        "{}",
+        i18n.text(if plan.reconfigure {
+            "init.reconfigure_complete"
+        } else {
+            "init.complete"
+        })
+    );
     println!(
         "  {} : {}",
         i18n.text("init.source"),
@@ -127,11 +170,18 @@ fn parse(arguments: &[OsString]) -> Result<InitOptions, String> {
                 argument,
                 value(arguments, &mut index, argument)?,
             )?,
+            "--reconfigure" => set_flag(&mut options.reconfigure, argument)?,
+            "--no-remote" => set_flag(&mut options.no_remote, argument)?,
             "--dry-run" => set_flag(&mut options.dry_run, argument)?,
             "--no-input" => set_flag(&mut options.no_input, argument)?,
             value => return Err(usage_error(&format!("unknown argument '{value}'"))),
         }
         index += 1;
+    }
+    if options.remote.is_some() && options.no_remote {
+        return Err(usage_error(
+            "--remote and --no-remote cannot be used together",
+        ));
     }
     Ok(options)
 }
@@ -168,9 +218,30 @@ fn prompt_agent(i18n: &I18n, default: &str) -> Result<String, String> {
     }
 }
 
-fn prompt_remote(i18n: &I18n) -> Result<Option<String>, String> {
-    let answer = prompt(i18n.text("init.remote_prompt"))?;
-    Ok((!answer.is_empty()).then_some(answer))
+fn prompt_remote(
+    i18n: &I18n,
+    current: Option<&str>,
+    reconfigure: bool,
+) -> Result<RemoteSelection, String> {
+    let message = if reconfigure {
+        i18n.format(
+            "init.remote_reconfigure_prompt",
+            &[(
+                "current",
+                current.unwrap_or_else(|| i18n.text("common.none")),
+            )],
+        )
+    } else {
+        i18n.text("init.remote_prompt").to_string()
+    };
+    let answer = prompt(&message)?;
+    if answer.is_empty() {
+        Ok(RemoteSelection::Keep)
+    } else if reconfigure && answer == "-" {
+        Ok(RemoteSelection::Remove)
+    } else {
+        Ok(RemoteSelection::Set(answer))
+    }
 }
 
 fn prompt(message: &str) -> Result<String, String> {
@@ -188,15 +259,7 @@ fn prompt(message: &str) -> Result<String, String> {
     Ok(answer.trim().to_string())
 }
 
-struct RepositoryPlan {
-    initialize: bool,
-    add_origin: bool,
-}
-
-fn inspect_repository(
-    paths: &AppPaths,
-    requested_remote: Option<&str>,
-) -> Result<RepositoryPlan, String> {
+fn inspect_repository(paths: &AppPaths) -> Result<RepositoryState, String> {
     git_global(&["--version"])?;
     let git_path = paths.source_home.join(".git");
     let initialized = match fs::symlink_metadata(&git_path) {
@@ -216,9 +279,9 @@ fn inspect_repository(
         }
     };
     if !initialized {
-        return Ok(RepositoryPlan {
+        return Ok(RepositoryState {
             initialize: true,
-            add_origin: requested_remote.is_some(),
+            origin: None,
         });
     }
     let inside = git_text(&paths.source_home, &["rev-parse", "--is-inside-work-tree"])?;
@@ -234,18 +297,35 @@ fn inspect_repository(
     } else {
         None
     };
-    match (requested_remote, existing.as_deref()) {
-        (Some(requested), Some(existing)) if requested != existing => Err(format!(
-            "init: Git remote 'origin' is already set to '{existing}'"
-        )),
-        (Some(_), None) => Ok(RepositoryPlan {
-            initialize: false,
-            add_origin: true,
-        }),
-        _ => Ok(RepositoryPlan {
-            initialize: false,
-            add_origin: false,
-        }),
+    Ok(RepositoryState {
+        initialize: false,
+        origin: existing,
+    })
+}
+
+fn resolve_remote(
+    existing: Option<String>,
+    selection: RemoteSelection,
+    reconfigure: bool,
+) -> Result<(Option<String>, RemoteAction), String> {
+    match selection {
+        RemoteSelection::Keep => Ok((existing, RemoteAction::None)),
+        RemoteSelection::Remove => {
+            let action = if existing.is_some() {
+                RemoteAction::Remove
+            } else {
+                RemoteAction::None
+            };
+            Ok((None, action))
+        }
+        RemoteSelection::Set(requested) => match existing {
+            Some(existing) if existing == requested => Ok((Some(existing), RemoteAction::None)),
+            Some(existing) if !reconfigure => Err(format!(
+                "init: Git remote 'origin' is already set to '{existing}'"
+            )),
+            Some(_) => Ok((Some(requested), RemoteAction::SetUrl)),
+            None => Ok((Some(requested), RemoteAction::Add)),
+        },
     }
 }
 
@@ -253,12 +333,25 @@ fn apply_repository(paths: &AppPaths, plan: &InitPlan) -> Result<(), String> {
     if plan.initialize_git {
         git(&paths.source_home, &["init"])?;
     }
-    if plan.add_origin {
-        let remote = plan
-            .remote
-            .as_deref()
-            .ok_or_else(|| "init: missing remote for Git origin".to_string())?;
-        git(&paths.source_home, &["remote", "add", "origin", remote])?;
+    match plan.remote_action {
+        RemoteAction::None => {}
+        RemoteAction::Add => {
+            let remote = plan
+                .remote
+                .as_deref()
+                .ok_or_else(|| "init: missing remote for Git origin".to_string())?;
+            git(&paths.source_home, &["remote", "add", "origin", remote])?;
+        }
+        RemoteAction::SetUrl => {
+            let remote = plan
+                .remote
+                .as_deref()
+                .ok_or_else(|| "init: missing replacement remote for Git origin".to_string())?;
+            git(&paths.source_home, &["remote", "set-url", "origin", remote])?;
+        }
+        RemoteAction::Remove => {
+            git(&paths.source_home, &["remote", "remove", "origin"])?;
+        }
     }
     Ok(())
 }
@@ -286,14 +379,13 @@ fn validate_remote(remote: &str) -> Result<(), String> {
 }
 
 fn print_plan(plan: &InitPlan, paths: &AppPaths, i18n: &I18n, dry_run: bool) {
-    println!(
-        "{}",
-        i18n.text(if dry_run {
-            "init.plan"
-        } else {
-            "init.setting_up"
-        })
-    );
+    let message = match (plan.reconfigure, dry_run) {
+        (true, true) => "init.reconfigure_plan",
+        (true, false) => "init.reconfiguring",
+        (false, true) => "init.plan",
+        (false, false) => "init.setting_up",
+    };
+    println!("{}", i18n.text(message));
     println!("  {} : {}", i18n.text("init.locale"), plan.locale.as_str());
     println!("  {} : {}", i18n.text("init.agent"), plan.agent);
     println!(
@@ -429,6 +521,24 @@ mod tests {
     }
 
     #[test]
+    fn parses_reconfiguration_and_rejects_conflicting_remote_options() {
+        let arguments = ["--reconfigure", "--no-remote", "--no-input"].map(OsString::from);
+        let options = parse(&arguments).expect("reconfiguration should parse");
+        assert!(options.reconfigure);
+        assert!(options.no_remote);
+
+        let conflicting = [
+            "--reconfigure",
+            "--remote",
+            "replacement.git",
+            "--no-remote",
+        ]
+        .map(OsString::from);
+        let error = parse(&conflicting).expect_err("remote choices must be exclusive");
+        assert!(error.contains("cannot be used together"));
+    }
+
+    #[test]
     fn rejects_credentials_in_http_remotes() {
         assert!(validate_remote("https://github.com/owner/commands.git").is_ok());
         assert!(validate_remote("git@github.com:owner/commands.git").is_ok());
@@ -496,6 +606,156 @@ mod tests {
         if root.exists() {
             fs::remove_dir_all(root).expect("fixture should be removed");
         }
+    }
+
+    #[test]
+    fn reconfigures_settings_and_origin_without_replacing_source() {
+        let root = std::env::temp_dir().join(format!(
+            "scv-init-reconfigure-test-{}",
+            crate::storage::unique_nonce()
+        ));
+        let paths = AppPaths::isolated(root.clone()).expect("paths should resolve");
+        let i18n = I18n::new(Locale::En).expect("catalog should load");
+        let initial = [
+            "--locale",
+            "en",
+            "--agent",
+            "codex",
+            "--remote",
+            "initial.git",
+            "--no-input",
+        ]
+        .map(OsString::from);
+        run(&initial, &paths, &i18n).expect("initial setup should succeed");
+        let original_manifest =
+            fs::read(paths.source_manifest_path()).expect("manifest should be readable");
+        let marker = paths.source_command_dir.join("preserve-me");
+        fs::write(&marker, "user-owned").expect("marker should be written");
+
+        let reconfigure = [
+            "--reconfigure",
+            "--locale",
+            "ko",
+            "--agent",
+            "claude",
+            "--remote",
+            "replacement.git",
+            "--no-input",
+        ]
+        .map(OsString::from);
+        run(&reconfigure, &paths, &i18n).expect("reconfiguration should succeed");
+
+        assert_eq!(
+            fs::read(paths.source_manifest_path()).expect("manifest should remain readable"),
+            original_manifest
+        );
+        assert_eq!(
+            fs::read_to_string(marker).expect("marker should remain readable"),
+            "user-owned"
+        );
+        let settings = Settings::load(&paths).expect("settings should load");
+        assert_eq!(settings.ui.locale, Locale::Ko);
+        assert_eq!(settings.create.agent.as_deref(), Some("claude"));
+        let output = Command::new("git")
+            .arg("-C")
+            .arg(&paths.source_home)
+            .args(["remote", "get-url", "origin"])
+            .output()
+            .expect("Git should start");
+        assert!(output.status.success());
+        assert_eq!(
+            String::from_utf8_lossy(&output.stdout).trim(),
+            "replacement.git"
+        );
+        fs::remove_dir_all(root).expect("fixture should be removed");
+    }
+
+    #[test]
+    fn reconfiguration_can_remove_origin_and_repair_missing_git_metadata() {
+        let root = std::env::temp_dir().join(format!(
+            "scv-init-repair-test-{}",
+            crate::storage::unique_nonce()
+        ));
+        let paths = AppPaths::isolated(root.clone()).expect("paths should resolve");
+        crate::source::ensure_initialized(&paths).expect("source should initialize");
+        let arguments = [
+            "--reconfigure",
+            "--locale",
+            "en",
+            "--agent",
+            "agy",
+            "--remote",
+            "initial.git",
+            "--no-input",
+        ]
+        .map(OsString::from);
+        let i18n = I18n::new(Locale::En).expect("catalog should load");
+
+        run(&arguments, &paths, &i18n).expect("reconfiguration should repair Git metadata");
+        assert!(paths.source_home.join(".git").exists());
+        let remove = ["--reconfigure", "--no-remote", "--no-input"].map(OsString::from);
+        run(&remove, &paths, &i18n).expect("origin removal should succeed");
+        let output = Command::new("git")
+            .arg("-C")
+            .arg(&paths.source_home)
+            .args(["remote"])
+            .output()
+            .expect("Git should start");
+        assert!(output.status.success());
+        assert!(String::from_utf8_lossy(&output.stdout).trim().is_empty());
+        fs::remove_dir_all(root).expect("fixture should be removed");
+    }
+
+    #[test]
+    fn reconfigure_dry_run_preserves_settings_and_origin() {
+        let root = std::env::temp_dir().join(format!(
+            "scv-init-reconfigure-dry-run-test-{}",
+            crate::storage::unique_nonce()
+        ));
+        let paths = AppPaths::isolated(root.clone()).expect("paths should resolve");
+        let i18n = I18n::new(Locale::En).expect("catalog should load");
+        let initial = [
+            "--locale",
+            "en",
+            "--agent",
+            "codex",
+            "--remote",
+            "initial.git",
+            "--no-input",
+        ]
+        .map(OsString::from);
+        run(&initial, &paths, &i18n).expect("initial setup should succeed");
+        let config = fs::read(paths.config_path()).expect("config should be readable");
+
+        let dry_run = [
+            "--reconfigure",
+            "--locale",
+            "ko",
+            "--agent",
+            "agy",
+            "--remote",
+            "replacement.git",
+            "--dry-run",
+            "--no-input",
+        ]
+        .map(OsString::from);
+        run(&dry_run, &paths, &i18n).expect("reconfiguration dry-run should succeed");
+
+        assert_eq!(
+            fs::read(paths.config_path()).expect("config should remain readable"),
+            config
+        );
+        let output = Command::new("git")
+            .arg("-C")
+            .arg(&paths.source_home)
+            .args(["remote", "get-url", "origin"])
+            .output()
+            .expect("Git should start");
+        assert_eq!(
+            String::from_utf8_lossy(&output.stdout).trim(),
+            "initial.git"
+        );
+        fs::remove_dir_all(root).expect("fixture should be removed");
     }
 
     #[test]

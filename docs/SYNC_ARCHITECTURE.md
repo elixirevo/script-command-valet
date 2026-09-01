@@ -14,7 +14,9 @@ conflict resolution to system Git or `gh`. SCV never stores GitHub tokens.
 `scv init` initializes the local source repository and may save a user-supplied URL
 or path as `origin`. This is a local configuration operation: it does not access the
 remote, create a hosted repository, commit, or push. Credential-bearing HTTP(S) URLs
-are rejected, and an existing conflicting `origin` is preserved.
+are rejected, and initial setup preserves an existing conflicting `origin`.
+`scv init --reconfigure` preserves the command source while allowing the user to
+replace or remove `origin` explicitly and repairing missing local Git metadata.
 
 ## Status
 

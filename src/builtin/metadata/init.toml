@@ -1,7 +1,7 @@
 name = "init"
 category = "system"
 description = "Initialize SCV source, preferences, and Git repository settings."
-usage = "scv init [--locale <en|ko>] [--agent <codex|claude|agy>] [--remote <url>] [--dry-run] [--no-input]"
+usage = "scv init [--reconfigure] [--locale <en|ko>] [--agent <codex|claude|agy>] [--remote <url> | --no-remote] [--dry-run] [--no-input]"
 builtin = true
 runtime = "builtin"
 platforms = ["windows", "linux", "macos"]
@@ -12,7 +12,8 @@ effects = [
   "creates the SCV source manifest and command directory",
   "initializes a local Git repository when needed",
   "writes machine-local locale and create-agent preferences",
-  "adds the Git origin remote when --remote is provided",
+  "adds or updates the Git origin remote when --remote is provided",
+  "removes the Git origin remote when --reconfigure and --no-remote are provided",
 ]
 
 [[options]]
@@ -33,6 +34,14 @@ value = "<url>"
 description = "Git URL or path to save as origin without contacting it"
 
 [[options]]
+long = "--reconfigure"
+description = "Rerun setup while preserving the existing command source"
+
+[[options]]
+long = "--no-remote"
+description = "Remove the existing Git origin during reconfiguration"
+
+[[options]]
 long = "--dry-run"
 description = "Show the initialization plan without changing files"
 
@@ -46,6 +55,9 @@ text = "Init does not create a remote repository, access the network, store cred
 [[notes]]
 text = "Running scv without arguments starts init only when setup is missing and stdin is a terminal."
 
+[[notes]]
+text = "Reconfiguration preserves the existing source manifest and command packages."
+
 [[examples]]
 command = "scv init"
 
@@ -54,3 +66,9 @@ command = "scv init --locale ko --agent agy --remote git@github.com:owner/scv-co
 
 [[examples]]
 command = "scv init --locale en --agent codex --dry-run --no-input"
+
+[[examples]]
+command = "scv init --reconfigure --locale ko --agent claude --remote git@github.com:owner/scv-commands.git --no-input"
+
+[[examples]]
+command = "scv init --reconfigure --no-remote --no-input"

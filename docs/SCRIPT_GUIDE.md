@@ -261,13 +261,23 @@ SCV provides these variables at execution time:
   runs never trigger setup as a side effect.
 - Setup selects the embedded `en` or `ko` locale, a default `codex`, `claude`, or
   `agy` create adapter, and an optional Git `origin`.
+- `scv init --reconfigure` reruns the explicit setup workflow while preserving the
+  source manifest and command packages. Current values are interactive defaults;
+  blank Git input keeps `origin`, a new URL replaces it, and `-` removes it.
+- Non-interactive reconfiguration uses explicit `--locale`, `--agent`, and
+  `--remote`; omitted values keep their current settings, while `--no-remote`
+  removes `origin`. `--remote` and `--no-remote` are mutually exclusive.
+- Reconfiguration repairs missing local Git metadata inside an otherwise initialized
+  `SCV_HOME`. It never contacts the remote, commits, pushes, or replaces command
+  source content.
 - `scv init --no-input` is fully specified by defaults. `--dry-run` validates and
   prints all target paths and values without creating source, config, or Git state.
 - Init creates the local source manifest and Git repository. An optional remote is
   configuration only: init does not contact a network, create a hosted repository,
   store credentials, commit, or push.
 - Reject HTTP(S) remotes containing user information, query credentials, or
-  fragments. Existing conflicting `origin` configuration is never overwritten.
+  fragments. Initial setup never overwrites a conflicting existing `origin`;
+  replacement or removal requires explicit reconfiguration input.
 
 ### `scv add`
 

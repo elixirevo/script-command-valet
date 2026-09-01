@@ -25,6 +25,17 @@ scv init --locale ko --agent agy \
 Init only initializes local source and Git settings. It does not access the network,
 create the hosted repository, commit, or push.
 
+Run the setup wizard again without replacing the existing command source:
+
+```bash
+scv init --reconfigure
+```
+
+Reconfiguration uses the current locale, agent, and Git origin as defaults. Enter a
+new origin to replace it, enter `-` in the interactive prompt to remove it, or use
+`--no-remote` for the equivalent non-interactive operation. Existing `scv.toml` and
+command packages are preserved, and missing local Git metadata is repaired.
+
 ## Architecture
 
 SCV separates the portable Git source from machine-local executable state.
