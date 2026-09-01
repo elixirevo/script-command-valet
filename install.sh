@@ -3,7 +3,7 @@ set -euo pipefail
 
 VERSION="${SCV_VERSION:-latest}"
 INSTALL_DIR="${SCV_INSTALL_DIR:-$HOME/.local/bin}"
-RELEASE_BASE_URL="${SCV_RELEASE_BASE_URL:-https://github.com/elixir/scv/releases}"
+RELEASE_BASE_URL="${SCV_RELEASE_BASE_URL:-https://github.com/elixirevo/script-command-valet/releases}"
 BINARY_PATH=""
 MODIFY_PATH=true
 
