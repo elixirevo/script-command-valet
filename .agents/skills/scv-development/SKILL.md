@@ -118,6 +118,8 @@ layout, security boundaries, or external side effects.
   valid-input, invalid-input, non-interactive, and dry-run paths.
 - Metadata or template changes: use inline or temporary package fixtures and verify
   schema rejection, platform resolution, entry confinement, bounds, and syntax checks.
+  Exercise PowerShell parsing with literal special-character paths and no source
+  execution; Windows CI must have `pwsh` available for this regression coverage.
 - Generation changes: test adapter translation, embedded resource completeness,
   workspace confinement and cleanup, validator rejection, and isolated installation.
   Do not make a live paid agent request merely for validation.

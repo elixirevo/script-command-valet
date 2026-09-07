@@ -199,6 +199,9 @@ Do not mix progress messages or explanatory text into JSON stdout.
   contract.
 - Source validation runs a non-executing syntax check when the runtime is available.
   It explicitly reports `skipped` when the runtime is unavailable.
+- Syntax checks pass source paths as literal data, including spaces, Unicode, and
+  shell metacharacters. PowerShell validation uses its parser without executing
+  the source; Windows CI requires `pwsh` so this check cannot silently be skipped.
 
 ## 6. Input, interaction, and errors
 

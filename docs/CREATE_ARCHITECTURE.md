@@ -293,6 +293,13 @@ provider state; SCV does not copy that state into the generation workspace.
 
 ## Validation limits
 
+PowerShell syntax validation passes the source path through a child-only environment
+variable to a fixed `Parser.ParseFile` command. It never appends paths to `-Command`,
+which interprets trailing arguments as PowerShell source rather than `$args`.
+Regression coverage uses literal paths containing spaces, Unicode, quotes, and
+metacharacters, rejects invalid or unreadable source, and verifies no source
+execution. Windows CI requires `pwsh` before running these tests.
+
 The validator runs only non-executing syntax checks available through installed
 runtimes. It reports a check as `skipped` when its runtime is unavailable, while
 structure and metadata validation always run. Do not treat SCV as having verified the

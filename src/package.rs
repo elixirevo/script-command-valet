@@ -467,13 +467,16 @@ fn check_syntax(runtime: &str, entry_name: &str, entry: &Path) -> Result<String,
         }
         "pwsh" => {
             let mut command = Command::new("pwsh");
+            // -Command treats trailing arguments as PowerShell source, not $args.
+            // Pass the literal path separately so spaces and metacharacters cannot
+            // change the parser command. Never execute the file being validated.
             command
+                .env("SCV_SYNTAX_CHECK_PATH", entry)
                 .arg("-NoLogo")
                 .arg("-NoProfile")
                 .arg("-NonInteractive")
                 .arg("-Command")
-                .arg("$errors=$null; [System.Management.Automation.Language.Parser]::ParseFile($args[0],[ref]$null,[ref]$errors) | Out-Null; if ($errors.Count) { $errors | ForEach-Object { [Console]::Error.WriteLine($_) }; exit 1 }")
-                .arg(entry);
+                .arg("$ErrorActionPreference='Stop'; $tokens=$null; $errors=$null; [System.Management.Automation.Language.Parser]::ParseFile($env:SCV_SYNTAX_CHECK_PATH,[ref]$tokens,[ref]$errors) | Out-Null; if ($errors.Count) { $errors | ForEach-Object { [Console]::Error.WriteLine($_) }; exit 1 }");
             command
         }
         "binary" => return Ok(format!("binary entry present: {entry_name}")),
@@ -563,6 +566,41 @@ mod tests {
     use crate::paths::AppPaths;
 
     use super::{install_validated, validate_generated, validate_one_shot};
+
+    #[test]
+    fn pwsh_syntax_checks_literal_paths_without_executing_source() {
+        let root = std::env::temp_dir().join(format!(
+            "scv pwsh 한글 ' [path] $name ; & (literal) {}-{}",
+            std::process::id(),
+            super::nonce()
+        ));
+        fs::create_dir(&root).unwrap();
+        let entry = root.join("main.ps1");
+        fs::write(
+            &entry,
+            "[System.IO.File]::WriteAllText((Join-Path $PSScriptRoot 'executed'), 'unexpected')\nthrow 'must not execute'\n",
+        )
+        .unwrap();
+        let check = super::check_syntax("pwsh", "main.ps1", &entry)
+            .expect("valid PowerShell source must parse at a literal path");
+        if check.contains("runtime unavailable") {
+            eprintln!("PowerShell regression check skipped: pwsh is unavailable");
+            fs::remove_dir_all(root).unwrap();
+            return;
+        }
+        assert_eq!(check, "pwsh syntax: main.ps1");
+        assert!(!root.join("executed").exists());
+
+        fs::write(&entry, "function Broken {\n").unwrap();
+        let error = super::check_syntax("pwsh", "main.ps1", &entry)
+            .expect_err("invalid PowerShell source must fail syntax validation");
+        assert!(error.contains("pwsh syntax check failed"));
+        assert!(!root.join("executed").exists());
+
+        fs::remove_file(&entry).unwrap();
+        assert!(super::check_syntax("pwsh", "main.ps1", &entry).is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn validates_a_complete_generated_package() {

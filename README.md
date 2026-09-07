@@ -103,6 +103,10 @@ Metadata owns detailed help and the execution contract. SCV chooses exactly one
 implementation for the current OS; it does not infer runtime from an extension,
 shebang, or executable bit.
 
+When the runtime is available, validation checks source syntax without executing
+the command. PowerShell checks also support paths with spaces, Unicode, and shell
+metacharacters; Windows CI exercises this parser boundary with a real `pwsh`.
+
 ## Build and development
 
 ```bash
