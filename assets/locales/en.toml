@@ -71,8 +71,8 @@
 "create.cancelled" = "Cancelled. No command was installed."
 "create.installed" = "Installed:"
 "oneshot.preview" = "Generated one-shot command:"
-"oneshot.warning" = "Generated code is untrusted; SCV validated its package contract and syntax, not its intended behavior."
-"oneshot.confirm" = "Save to history, prune entries beyond 100, and run this command? [y/N] "
+"oneshot.review" = "Review the generated command's description and effects."
+"oneshot.confirm" = "Run this command? [y/N] "
 "oneshot.cancelled" = "Cancelled. Nothing was saved or run."
 "oneshot.saved" = "Saved to history: {id}"
 "oneshot.running" = "Running in the current working directory..."
@@ -86,6 +86,8 @@
 "history.execution_working_directory" = "execution working directory"
 "history.confirm" = "Run this stored command? [y/N] "
 "history.running" = "Running in the current working directory..."
+"history.cleaned" = "Removed {count} old history entries."
+"history.cleanup_failed" = "Could not finish cleaning up old history entries: {error}"
 
 [builtins.history]
 description = "List and rerun validated one-shot command history."
@@ -99,6 +101,7 @@ notes = [
   "History is machine-local and is not added to the Git-backed command source.",
   "Reruns use the current working directory, not the directory recorded when the entry was created.",
   "SCV retains the newest 100 entries and removes older entries after saving a new one-shot command.",
+  "Validation checks package structure and available runtime syntax, not intended behavior. Review the command description and effects before execution.",
 ]
 
 [builtins.history.arguments]

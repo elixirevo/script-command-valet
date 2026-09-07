@@ -226,7 +226,9 @@ then asks for consent. After consent it commits a revalidated SHA-256-protected 
 under machine-local history and executes that copy in the current working directory.
 Every rerun revalidates integrity, uses the caller's current directory, and requires
 fresh consent. The newest 100 entries are retained; history is not added to the Git
-source.
+source. The execution question stays concise; a separate notice appears when old
+history entries are actually removed. `scv history --help` explains retention and
+the limits of package and syntax validation.
 
 Create a persistent reusable command:
 

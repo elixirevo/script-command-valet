@@ -116,7 +116,10 @@ writing it; Agy receives its prompt as an argument with null stdin.
 
 The final preview retains the description and declared risk, network use, effects,
 implementations, and validation checks. Consent remains explicit: `create` asks to
-install, while one-shot mode asks to save to history and execute. No spinner runs
+install, while one-shot mode briefly reminds the user to review the command and asks
+to execute. History retention and validation limits are explained in `scv history
+--help`. After saving, report how many old entries were removed only when cleanup
+actually removed entries; report cleanup failures separately. No spinner runs
 during consent or execution. The executed command's own stdout and stderr remain
 visible after approval. `--yes` and `--no-input` keep their existing semantics.
 

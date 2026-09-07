@@ -57,7 +57,8 @@ scv <command>                    current activation only
 - One-shot execution and `scv history run <id>` use the caller's current working
   directory. The original directory is stored for audit display only.
 - SCV retains the newest 100 one-shot entries and removes older entries only after a
-  new entry has been committed.
+  new entry has been committed. Report cleanup only when entries were removed or
+  cleanup failed; keep retention and validation limits in detailed help.
 
 Follow `docs/STORAGE_ARCHITECTURE.md` and `docs/SYNC_ARCHITECTURE.md` for detailed
 path and synchronization contracts.
@@ -354,6 +355,7 @@ confirmed execution and machine-local history.
   redirected output and `TERM=dumb` receive plain stage lines. Stop the spinner
   before displaying errors, the validated summary, or the consent prompt.
 - Approval previews retain the command description, risk, network use, and effects.
+  Use a short review reminder and execution question for one-shot consent.
   One-shot execution output is visible after consent; persistent creation asks for
   installation consent and does not execute the package.
 - The explicit prompt places the selected output language outside the escaped,

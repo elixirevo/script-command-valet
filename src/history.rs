@@ -36,6 +36,12 @@ pub struct StoredHistory {
     pub package_dir: PathBuf,
 }
 
+#[derive(Debug, Default)]
+pub struct HistoryCleanup {
+    pub removed_entries: usize,
+    pub error: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct HistoryManifest {
@@ -67,7 +73,7 @@ pub fn store(
     source: &Path,
     request: &StoreRequest<'_>,
     paths: &AppPaths,
-) -> Result<StoredHistory, String> {
+) -> Result<(StoredHistory, HistoryCleanup), String> {
     ensure_history_dir(paths)?;
     let created_unix_ms = now_unix_ms();
     let source_digest = package::digest_validated(package)?;
@@ -131,10 +137,8 @@ pub fn store(
                 return Err(error);
             }
         };
-        if let Err(error) = prune(paths, RETAIN_HISTORY, &id) {
-            eprintln!("scv: warning: history cleanup failed: {error}");
-        }
-        Ok(stored)
+        let cleanup = prune(paths, RETAIN_HISTORY, &id);
+        Ok((stored, cleanup))
     })();
 
     if staging.exists() {
@@ -319,20 +323,26 @@ fn history_id(created_unix_ms: u64, digest: &str, paths: &AppPaths) -> String {
     format!("{base}-{}", storage::unique_nonce())
 }
 
-fn prune(paths: &AppPaths, keep: usize, protected_id: &str) -> Result<(), String> {
-    let entries = list(paths)?;
-    let mut retained = 0;
-    for entry in entries {
-        if entry.id == protected_id {
-            continue;
+fn prune(paths: &AppPaths, keep: usize, protected_id: &str) -> HistoryCleanup {
+    let mut cleanup = HistoryCleanup::default();
+    cleanup.error = (|| {
+        let entries = list(paths)?;
+        let mut retained = 0;
+        for entry in entries {
+            if entry.id == protected_id {
+                continue;
+            }
+            if retained < keep.saturating_sub(1) {
+                retained += 1;
+                continue;
+            }
+            storage::remove_if_exists(&paths.history_dir.join(entry.id))?;
+            cleanup.removed_entries += 1;
         }
-        if retained < keep.saturating_sub(1) {
-            retained += 1;
-            continue;
-        }
-        storage::remove_if_exists(&paths.history_dir.join(entry.id))?;
-    }
-    Ok(())
+        Ok::<(), String>(())
+    })()
+    .err();
+    cleanup
 }
 
 fn now_unix_ms() -> u64 {
@@ -388,7 +398,7 @@ entry = "task.bin"
     fn stores_lists_and_revalidates_a_one_shot_package() {
         let (root, paths, source) = fixture();
         let package = package::validate_one_shot(&source).expect("package should validate");
-        let stored = store(
+        let (stored, cleanup) = store(
             &package,
             &source,
             &StoreRequest {
@@ -401,6 +411,8 @@ entry = "task.bin"
             &paths,
         )
         .expect("history should store");
+        assert_eq!(cleanup.removed_entries, 0);
+        assert!(cleanup.error.is_none());
         let entries = list(&paths).expect("history should list");
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].id, stored.summary.id);
@@ -413,7 +425,7 @@ entry = "task.bin"
     fn rejects_a_tampered_history_package() {
         let (root, paths, source) = fixture();
         let package = package::validate_one_shot(&source).expect("package should validate");
-        let stored = store(
+        let (stored, _) = store(
             &package,
             &source,
             &StoreRequest {
@@ -431,5 +443,31 @@ entry = "task.bin"
         let error = load(&stored.summary.id, &paths).expect_err("tampering should fail");
         assert!(error.contains("SHA-256"));
         fs::remove_dir_all(root).expect("fixture should be removed");
+    }
+
+    #[test]
+    fn reports_cleanup_only_when_the_history_limit_is_exceeded() {
+        let (root, paths, source) = fixture();
+        let package = package::validate_one_shot(&source).unwrap();
+        for count in 1..=102 {
+            let (stored, cleanup) = store(
+                &package,
+                &source,
+                &StoreRequest {
+                    request: "print a result",
+                    locale: Locale::En,
+                    agent: "codex",
+                    model: None,
+                    working_directory: &root,
+                },
+                &paths,
+            )
+            .unwrap();
+            assert_eq!(cleanup.removed_entries, usize::from(count > 100));
+            assert!(cleanup.error.is_none());
+            assert_eq!(list(&paths).unwrap().len(), count.min(100));
+            load(&stored.summary.id, &paths).expect("new history must survive cleanup");
+        }
+        fs::remove_dir_all(root).unwrap();
     }
 }

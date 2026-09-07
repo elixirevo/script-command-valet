@@ -129,7 +129,7 @@ pub fn run(
 
     let working_directory = std::env::current_dir()
         .map_err(|error| format!("one-shot: could not resolve working directory: {error}"))?;
-    let stored = history::store(
+    let (stored, cleanup) = history::store(
         &validated,
         &generated,
         &StoreRequest {
@@ -146,6 +146,21 @@ pub fn run(
         "{}",
         i18n.format("oneshot.saved", &[("id", &stored.summary.id)])
     );
+    if cleanup.removed_entries > 0 {
+        eprintln!(
+            "{}",
+            i18n.format(
+                "history.cleaned",
+                &[("count", &cleanup.removed_entries.to_string())]
+            )
+        );
+    }
+    if let Some(error) = cleanup.error {
+        eprintln!(
+            "{}",
+            i18n.format("history.cleanup_failed", &[("error", &error)])
+        );
+    }
     println!("{}", i18n.text("oneshot.running"));
     command::run_package(&stored.package.metadata, &[], &stored.package_dir, paths)
 }
@@ -183,7 +198,7 @@ fn print_preview(package: &package::ValidatedPackage, i18n: &I18n) {
         };
         println!("    {marker} {check}");
     }
-    println!("  {}", i18n.text("oneshot.warning"));
+    println!("  {}", i18n.text("oneshot.review"));
 }
 
 fn parse(arguments: &[OsString]) -> Result<Options, String> {

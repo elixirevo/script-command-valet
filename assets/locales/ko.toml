@@ -71,8 +71,8 @@
 "create.cancelled" = "취소했습니다. 설치한 명령이 없습니다."
 "create.installed" = "설치 완료:"
 "oneshot.preview" = "생성된 일회성 command:"
-"oneshot.warning" = "생성 코드는 신뢰되지 않습니다. SCV는 package 계약과 문법을 검증했지만 의도한 동작까지 검증하지는 않았습니다."
-"oneshot.confirm" = "history에 저장하고 100개를 넘는 이전 항목을 정리한 뒤 이 command를 실행할까요? [y/N] "
+"oneshot.review" = "생성된 명령의 설명과 작업 내용을 확인해 주세요."
+"oneshot.confirm" = "이 명령을 실행할까요? [y/N] "
 "oneshot.cancelled" = "취소했습니다. 저장하거나 실행한 항목이 없습니다."
 "oneshot.saved" = "history에 저장했습니다: {id}"
 "oneshot.running" = "현재 작업 디렉터리에서 실행합니다..."
@@ -86,6 +86,8 @@
 "history.execution_working_directory" = "실행 작업 디렉터리"
 "history.confirm" = "이 저장된 command를 실행할까요? [y/N] "
 "history.running" = "현재 작업 디렉터리에서 실행합니다..."
+"history.cleaned" = "오래된 실행 기록 {count}개를 정리했습니다."
+"history.cleanup_failed" = "오래된 실행 기록 정리를 완료하지 못했습니다: {error}"
 
 [builtins.history]
 description = "검증된 일회성 command history를 표시하고 다시 실행합니다."
@@ -99,6 +101,7 @@ notes = [
   "History는 machine-local이며 Git 기반 command source에 추가되지 않습니다.",
   "재실행은 항목을 생성한 디렉터리가 아니라 현재 작업 디렉터리를 사용합니다.",
   "SCV는 최신 100개 항목을 보존하고 새 일회성 command를 저장한 뒤 더 오래된 항목을 제거합니다.",
+  "검증은 패키지 구조와 사용 가능한 런타임의 문법을 확인하며, 의도한 동작까지 확인하지는 않습니다. 실행 전 명령의 설명과 작업 내용을 확인해 주세요.",
 ]
 
 [builtins.history.arguments]

@@ -48,6 +48,9 @@ text = "Reruns use the current working directory, not the directory recorded whe
 [[notes]]
 text = "SCV retains the newest 100 entries and removes older entries after saving a new one-shot command."
 
+[[notes]]
+text = "Validation checks package structure and available runtime syntax, not intended behavior. Review the command description and effects before execution."
+
 [[examples]]
 command = "scv history"
 
