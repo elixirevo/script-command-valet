@@ -59,7 +59,10 @@ layout, security boundaries, or external side effects.
 - Compose generation prompts from minimal shared contracts and exactly one mode
   contract. Materialize only that mode's metadata and source templates; never expose
   persistent argument, help, interaction, or dry-run scaffolding to one-shot
-  generation.
+  generation. Keep a runtime-neutral inline metadata skeleton in each mode;
+  templates remain optional references. Instruct straightforward requests to batch
+  writes and skip planning, probes, rereads, and validation tool calls. SCV owns
+  package and syntax validation; agents finish with the package name only.
 - Follow the guide's implementation-choice rules in both modes: prefer available
   system utilities, retain necessary correctness handling, and avoid mandatory
   function scaffolding in one-shot templates. Localize authored messages without

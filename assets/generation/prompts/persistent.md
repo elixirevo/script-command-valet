@@ -1,63 +1,41 @@
-# SCV persistent command generation mode
+# SCV persistent mode
 
-Generate a reusable command package that SCV will install into the user's Git-backed
-source after validation and explicit consent. The command may accept runtime inputs
-and may support multiple platforms. It is not executed during generation.
+Create a reusable package; SCV validates and installs it after explicit consent.
+Generation never executes it. Runtime inputs and multiple supported platforms are
+allowed. Start with this metadata shape and adapt it to the actual behavior:
 
-## Usage, arguments, options, and help
-
-- Metadata `usage` begins with `scv <command>` and truthfully shows every positional
-  argument and option accepted by the implementation.
-- Keep only essential targets or identifiers positional, normally one and at most
-  two.
-- Every `[[arguments]]` entry has `name`, `required`, and `description`; `default` is
-  allowed only when it matches real implementation behavior.
-- Model paths, formats, configuration values, and behavior switches as named
-  options.
-- Every `[[options]]` entry contains at least one of `short` or `long`, preferably a
-  stable `long`, plus `description`. There is no option `name` field.
-- A value-taking option uses `value = "<value>"` and may declare a truthful
-  `default`. A boolean flag omits `value`.
-- Never declare `-h` or `--help`; SCV intercepts both and renders help from metadata.
-- `usage`, arguments, options, examples, and implementation parsing must agree. Do
-  not expose one value as both positional and named input.
-
-Detailed help belongs in metadata. Implementations validate input but do not include
-a `show_help` function, usage block, or help-option branch. Invalid input goes to
-stderr, exits non-zero, and ends with:
-
-```text
-Try 'scv <command> --help' for more information.
+```toml
+name = "__COMMAND__"
+category = "__CATEGORY__"
+description = "__DESCRIPTION__"
+usage = "scv __COMMAND__"
+builtin = false
+risk = "__RISK__"
+network = false
+supports_dry_run = false
+effects = ["__EFFECT__"]
+[[implementations]]
+runtime = "__RUNTIME__"
+platforms = ["__PLATFORM__"]
+entry = "__ENTRY__"
 ```
 
-Keep that required protocol literal in canonical English even when the generated
-human-facing language is different.
-
-## Interaction and automation
-
-Every workflow has a fully specified non-interactive invocation. Prompt only for a
-missing value when interactive behavior was requested and stdin is a TTY.
-
-If the command can prompt:
-
-- implement and declare `--no-input`;
-- refuse to prompt when stdin is not a TTY;
-- fail with the exact missing argument or option when input is disabled; and
-- keep destructive consent in a separate `--yes` flag.
-
-`--no-input` never implies destructive authorization. Do not add interaction when
-the request can be satisfied with ordinary arguments and options.
-
-Set `supports_dry_run = true` only when the implementation exposes and declares a
-`--dry-run` flag that makes no local or remote change, prints the planned targets,
-and clearly states that no changes were made. A dry-run may read state but cannot
-create cache files, temporary output in the package, or remote mutations.
-
-## Persistent-mode completion checks
-
-1. Confirm metadata usage, arguments, options, examples, and implementation parsing
-   agree.
-2. Confirm every option uses `short` or `long` and no option uses `name`.
-3. Confirm every prompt-capable workflow has a complete `--no-input` invocation and
-   separate destructive consent.
-4. Confirm declared dry-run behavior cannot mutate local or remote state.
+- `usage` begins with `scv <command>` and matches actual inputs. Keep only one or
+  two essential targets positional; configuration/behavior uses named options.
+- `[[arguments]]` has `name`, `required`, `description`, and optionally a truthful
+  `default`. Never expose one value as both positional and named input.
+- Every `[[options]]` entry has `short` or `long` (prefer `long`) and `description`.
+  There is no option `name` field. A value-taking option adds `value = "<value>"`
+  and optionally a truthful `default`; a boolean flag omits `value`.
+- Keep detailed help in metadata, including useful `[[examples]]` with `command`
+  and optional `[[notes]]` with `text`. SCV owns `-h`/`--help`: do not declare them
+  or write a `show_help`, usage block, or help branch. Validate unknown options,
+  missing values, and invalid input; errors end with the exact English literal
+  `Try 'scv <command> --help' for more information.`
+- Add prompts only if requested. Prompt only on a TTY; declare and implement
+  `--no-input`, report the exact missing input when disabled, and support a fully
+  specified non-interactive invocation. Destructive consent requires a separate
+  `--yes`; `--no-input` never grants it.
+- Set `supports_dry_run = true` only with a declared/implemented `--dry-run` that
+  prints exact planned targets and a no-change result without any local or remote
+  mutation, including caches or temporary output.

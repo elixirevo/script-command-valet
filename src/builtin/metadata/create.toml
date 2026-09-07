@@ -85,7 +85,7 @@ text = "Generated packages store one authored language; changing ui.locale later
 text = "Code generation logs are hidden behind stage progress. Review the validated command summary before approving installation."
 
 [[notes]]
-text = "Generation prefers available system tools and minimal implementations. External utilities retain their native output language."
+text = "Generation prefers system tools, minimal implementations, and batched writing. SCV performs package and syntax checks after generation. External utilities retain their native output language."
 
 [[notes]]
 text = "Before approval, SCV shows elapsed time, cumulative token usage, available cache breakdown, and observed tool calls. Time includes preparation and validation; missing metrics are unavailable."

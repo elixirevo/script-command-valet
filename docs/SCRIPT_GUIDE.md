@@ -341,10 +341,17 @@ confirmed execution and machine-local history.
   or `docs/` content.
 - Compose every request from a minimal shared generation/package contract and exactly
   one mode contract. Persistent-only argument, option, help, prompt, and dry-run
-  guidance must not appear in a one-shot prompt.
+  guidance must not appear in a one-shot prompt. Include a runtime-neutral metadata
+  skeleton in the selected mode contract so ordinary requests need no template read.
 - Materialize only the selected mode's metadata and source templates under the
   workspace `templates/` names. One-shot templates use exact zero-input usage and do
   not contain persistent help, interaction, or mandatory function scaffolding.
+  Templates are optional references; read only a relevant template when needed.
+- For straightforward requests, instruct the agent to batch metadata and source
+  writes, skip planning/exploration/probing and redundant rereads, and finish with
+  the package name only. Agents do not run tests, package validation, or syntax
+  checks; SCV performs its full validation after generation. This reduces model
+  round trips without changing runtime checks, confinement, or consent.
 - Apply the implementation-choice rules in section 8 to both generation modes.
   One-shot generation targets the current platform without speculative extra
   implementations. Shared metadata guidance must not prescribe a runtime by example.

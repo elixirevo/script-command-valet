@@ -227,6 +227,12 @@ structured data or complex logic. One-shot templates omit mandatory `main` wrapp
 and target the current platform. This guides generation without imposing a line
 limit or changing the selected model.
 
+Compact inline contracts let straightforward requests write metadata and code
+together without first reading templates. Agents skip redundant planning, exploration,
+and validation calls; SCV performs package and syntax validation after generation.
+Templates remain optional references. The one-shot contract is about 46% smaller;
+actual token and time savings depend on the provider and its tool calls.
+
 Generate, inspect, save, and immediately run a one-shot command:
 
 ```bash

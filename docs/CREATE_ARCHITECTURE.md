@@ -93,7 +93,8 @@ new approval.
 - `assets/generation/templates/`: persistent `command.*.tmpl` and one-shot
   `one-shot.*.tmpl` starting points are embedded. Materialization exposes only the
   selected set as `templates/command.toml`, `command.sh`, `command.js`, `command.py`,
-  and `command.ps1` so an adapter cannot select the wrong mode template.
+  and `command.ps1` so an adapter cannot select the wrong mode template. They are
+  optional references; mode prompts also contain an inline metadata skeleton.
 
 Root `AGENTS.md` and `CLAUDE.md` are entrypoints for developers who run an agent from
 the product repository. They are not copied into a temporary generation workspace.
@@ -197,6 +198,19 @@ without a runtime-specific sample. One-shot templates omit mandatory `main`
 wrappers, and their mode prompt includes a short native-tool example. One-shot
 generation targets the current platform without speculative extra implementations.
 
+The shared boundary asks straightforward requests to write metadata and source
+in one tool call when supported, without planning, filesystem exploration, utility
+probes, or rereading just-written files. Each mode includes a runtime-neutral TOML
+skeleton, so templates need not be read unless relevant details are needed. Agents
+finish with the package name only and do not run tests or duplicate SCV's package
+and syntax checks. SCV's validator and installation/history checks remain unchanged.
+
+The embedded shared-plus-mode contracts are about 5.6 KB for one-shot and 6.1 KB for
+persistent generation, excluding the user request and reserved names. A fixture
+prompt-size budget guards against accidental expansion. This measures SCV-authored
+bytes, not model tokens or the provider's own system/tool context. No fixed latency
+or number of model calls is guaranteed by these authoring instructions.
+
 These are authoring instructions, not a code-length validator or a change to model
 selection. Evaluate generated results by correctness, utility choice, unnecessary
 custom logic, and elapsed generation time. Useful cases include directory disk usage
@@ -257,7 +271,8 @@ sandbox, approval, and network boundaries. SCV does not invent mappings for port
 effort or generic options when a provider does not support them.
 
 The shared prompt owns workspace confinement, implementation choice, package shape,
-runtimes, localization, safety metadata, and non-executing completion checks. The
+runtimes, localization, safety metadata, and the concise writing workflow. SCV
+alone performs package and non-executing syntax validation after generation. The
 persistent contract alone owns arguments, options, metadata-rendered help,
 interactive automation, and dry-run rules. The one-shot contract instead requires
 exact zero-input usage, no arguments or options, no prompts, current-platform support,

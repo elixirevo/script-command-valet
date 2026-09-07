@@ -320,15 +320,66 @@ mod tests {
         assert!(prompt.contains("add, rm"));
         assert!(prompt.contains("human-facing text in Korean (ko)"));
         assert!(prompt.contains("Every `[[options]]` entry"));
-        assert!(prompt.contains("unquoted TOML booleans, `true` or `false`"));
-        assert!(prompt.lines().any(|line| line.contains("never execute")));
-        assert!(
-            prompt
-                .lines()
-                .any(|line| line.trim() == "or import an implementation.")
-        );
+        assert!(prompt.contains("unquoted TOML booleans"));
+        assert!(prompt.contains("never execute or import an implementation"));
         assert!(!prompt.contains("AGENTS.md"));
         assert!(!prompt.contains("CLAUDE.md"));
+    }
+
+    #[test]
+    fn compact_contracts_avoid_redundant_agent_work_in_both_modes() {
+        for mode in [GenerationMode::Persistent, GenerationMode::OneShot] {
+            let prompt = build_prompt(
+                "count the files",
+                None,
+                crate::i18n::Locale::En,
+                mode,
+                ["create", "history"],
+            );
+            assert!(
+                prompt.len() < 7000,
+                "embedded contract grew to {} bytes",
+                prompt.len()
+            );
+            assert!(prompt.contains("write metadata and source together in one tool call"));
+            assert!(prompt.contains("optional references, not required reads"));
+            assert!(prompt.contains("SCV owns package and syntax validation"));
+            assert!(prompt.contains("Do not run validation"));
+            assert!(!prompt.contains("Completion checks"));
+            assert_eq!(prompt.matches("```toml").count(), 1);
+        }
+    }
+
+    #[test]
+    fn inline_mode_metadata_produces_valid_packages_without_reading_templates() {
+        for (mode, guide) in [
+            (GenerationMode::Persistent, PERSISTENT_GUIDE),
+            (GenerationMode::OneShot, ONE_SHOT_GUIDE),
+        ] {
+            let workspace = GenerationWorkspace::create(mode).unwrap();
+            let package = workspace.root().join("generated/sample-command");
+            std::fs::create_dir(&package).unwrap();
+            let (_, example) = guide.split_once("```toml\n").unwrap();
+            let (example, _) = example.split_once("```").unwrap();
+            let metadata = example
+                .replace("__COMMAND__", "sample-command")
+                .replace("__CATEGORY__", "sample")
+                .replace("__DESCRIPTION__", "Print sample output")
+                .replace("__RISK__", "read")
+                .replace("__EFFECT__", "Prints sample output")
+                .replace("__RUNTIME__", "node")
+                .replace("__PLATFORM__", crate::command::current_platform())
+                .replace("__ENTRY__", "main.js");
+            std::fs::write(package.join("metadata.toml"), metadata).unwrap();
+            std::fs::write(package.join("main.js"), "console.log('sample');\n").unwrap();
+            let validated = match mode {
+                GenerationMode::Persistent => crate::package::validate_generated(&package),
+                GenerationMode::OneShot => crate::package::validate_one_shot(&package),
+            }
+            .unwrap();
+            assert_eq!(validated.files.len(), 2);
+            assert_eq!(validated.metadata.name, "sample-command");
+        }
     }
 
     #[test]
