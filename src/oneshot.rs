@@ -12,6 +12,7 @@ use crate::input;
 use crate::metadata::Registry;
 use crate::package;
 use crate::paths::AppPaths;
+use crate::progress::GenerationProgress;
 
 #[derive(Default)]
 struct Options {
@@ -87,6 +88,7 @@ pub fn run(
         .validate_effort(effort)
         .map_err(|error| format!("one-shot: {error}"))?;
 
+    let preparing = GenerationProgress::start(1, i18n.text("generation.preparing"), i18n);
     let workspace = GenerationWorkspace::create(GenerationMode::OneShot)?;
     let prompt = generation::build_prompt(
         description,
@@ -95,18 +97,12 @@ pub fn run(
         GenerationMode::OneShot,
         registry.names(),
     );
-    println!(
-        "{}",
-        i18n.format("oneshot.generating", &[("agent", adapter.name())])
+    preparing.complete();
+    let generating = GenerationProgress::start(
+        2,
+        &i18n.format("generation.generating", &[("agent", adapter.name())]),
+        i18n,
     );
-    println!("  executable : {}", adapter.executable());
-    println!("  language   : {}", output_locale.as_str());
-    if let Some(model) = resolved.model.as_deref() {
-        println!("  model      : {model}");
-    }
-    if let Some(effort) = effort {
-        println!("  effort     : {}", effort.as_str());
-    }
     adapter
         .generate(&GenerateRequest {
             workspace: workspace.root(),
@@ -117,9 +113,14 @@ pub fn run(
         })
         .map_err(|error| format!("one-shot: {error}"))?;
 
+    generating.complete();
+
+    let validating = GenerationProgress::start(3, i18n.text("generation.validating"), i18n);
     let generated = workspace.generated_package()?;
     let validated = package::validate_one_shot(&generated)
         .map_err(|error| format!("one-shot: validation failed: {error}"))?;
+    validating.complete();
+    GenerationProgress::approval(i18n.text("generation.run_approval"));
     print_preview(&validated, i18n);
     if !options.yes && !confirm(i18n)? {
         println!("{}", i18n.text("oneshot.cancelled"));

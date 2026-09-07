@@ -59,7 +59,17 @@
 "init.complete" = "SCV 설정을 완료했습니다."
 "init.reconfigure_complete" = "SCV 재설정을 완료했습니다."
 "init.next_steps" = "Git으로 소스를 커밋한 뒤 업로드할 준비가 되면 'scv sync push'를 사용하세요."
-"oneshot.generating" = "{agent}로 일회성 package를 생성합니다..."
+"generation.preparing" = "요청 준비 중"
+"generation.generating" = "{agent}로 명령 생성 중"
+"generation.validating" = "명령 검증 중"
+"generation.install_approval" = "설치 승인 준비 완료"
+"generation.run_approval" = "실행 승인 준비 완료"
+"generation.done" = "완료"
+"generation.failed" = "실패"
+"create.preview" = "생성된 명령:"
+"create.confirm" = "명령을 설치할까요? [y/N] "
+"create.cancelled" = "취소했습니다. 설치한 명령이 없습니다."
+"create.installed" = "설치 완료:"
 "oneshot.preview" = "생성된 일회성 command:"
 "oneshot.warning" = "생성 코드는 신뢰되지 않습니다. SCV는 package 계약과 문법을 검증했지만 의도한 동작까지 검증하지는 않았습니다."
 "oneshot.confirm" = "history에 저장하고 100개를 넘는 이전 항목을 정리한 뒤 이 command를 실행할까요? [y/N] "
@@ -212,6 +222,7 @@ notes = [
   "agent는 임시 workspace에만 쓰며 SCV validator와 installer만 command library를 변경합니다.",
   "stdin이 터미널이 아니면 자동으로 입력을 금지합니다.",
   "생성 package는 선택한 언어 하나를 원문으로 저장하므로 나중에 ui.locale을 바꿔도 기존 사용자 command는 번역되지 않습니다.",
+  "코드 생성 로그는 숨기고 단계별 진행 상태를 표시합니다. 검증 후 명령 요약을 확인하고 설치를 승인합니다.",
 ]
 
 [builtins.create.arguments]

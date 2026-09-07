@@ -7,11 +7,12 @@ use crate::agent::{self, Effort, GenerateRequest};
 use crate::command::platform_label;
 use crate::config::Settings;
 use crate::generation::{self, GenerationMode, GenerationWorkspace};
-use crate::i18n::Locale;
+use crate::i18n::{I18n, Locale};
 use crate::input;
 use crate::metadata::{Registry, valid_name};
 use crate::package;
 use crate::paths::AppPaths;
+use crate::progress::GenerationProgress;
 use crate::source;
 
 #[derive(Default)]
@@ -28,7 +29,12 @@ struct CreateOptions {
     no_input: bool,
 }
 
-pub fn run(arguments: &[OsString], paths: &AppPaths, _registry: &Registry) -> Result<i32, String> {
+pub fn run(
+    arguments: &[OsString],
+    paths: &AppPaths,
+    _registry: &Registry,
+    i18n: &I18n,
+) -> Result<i32, String> {
     let registry = Registry::load_source(paths).map_err(|error| format!("create: {error}"))?;
     let options = parse(arguments)?;
     let description = options
@@ -94,6 +100,7 @@ pub fn run(arguments: &[OsString], paths: &AppPaths, _registry: &Registry) -> Re
         .validate_effort(effort)
         .map_err(|error| format!("create: {error}"))?;
 
+    let preparing = GenerationProgress::start(1, i18n.text("generation.preparing"), i18n);
     let workspace = GenerationWorkspace::create(GenerationMode::Persistent)?;
     let reserved_names = registry
         .names()
@@ -106,15 +113,12 @@ pub fn run(arguments: &[OsString], paths: &AppPaths, _registry: &Registry) -> Re
         GenerationMode::Persistent,
         reserved_names,
     );
-    println!("Generating command package with {}...", adapter.name());
-    println!("  executable : {}", adapter.executable());
-    println!("  language   : {}", output_locale.as_str());
-    if let Some(model) = resolved.model.as_deref() {
-        println!("  model      : {model}");
-    }
-    if let Some(effort) = effort {
-        println!("  effort     : {}", effort.as_str());
-    }
+    preparing.complete();
+    let generating = GenerationProgress::start(
+        2,
+        &i18n.format("generation.generating", &[("agent", adapter.name())]),
+        i18n,
+    );
     adapter
         .generate(&GenerateRequest {
             workspace: workspace.root(),
@@ -125,6 +129,9 @@ pub fn run(arguments: &[OsString], paths: &AppPaths, _registry: &Registry) -> Re
         })
         .map_err(|error| format!("create: {error}"))?;
 
+    generating.complete();
+
+    let validating = GenerationProgress::start(3, i18n.text("generation.validating"), i18n);
     let generated = workspace.generated_package()?;
     let validated = package::validate_generated(&generated)
         .map_err(|error| format!("create: validation failed: {error}"))?;
@@ -151,9 +158,11 @@ pub fn run(arguments: &[OsString], paths: &AppPaths, _registry: &Registry) -> Re
         }
     }
 
-    print_preview(&validated);
-    if !options.yes && !confirm()? {
-        println!("Cancelled. No command was installed.");
+    validating.complete();
+    GenerationProgress::approval(i18n.text("generation.install_approval"));
+    print_preview(&validated, i18n);
+    if !options.yes && !confirm(i18n)? {
+        println!("{}", i18n.text("create.cancelled"));
         return Ok(0);
     }
     source::ensure_initialized(paths).map_err(|error| format!("create: {error}"))?;
@@ -165,7 +174,7 @@ pub fn run(arguments: &[OsString], paths: &AppPaths, _registry: &Registry) -> Re
         )
     })?;
     println!();
-    println!("Installed:");
+    println!("{}", i18n.text("create.installed"));
     println!("  scv {}", validated.metadata.name);
     println!("  activation : {}", applied.activation);
     Ok(0)
@@ -239,14 +248,19 @@ fn parse(arguments: &[OsString]) -> Result<CreateOptions, String> {
     Ok(options)
 }
 
-fn print_preview(package: &package::ValidatedPackage) {
+fn print_preview(package: &package::ValidatedPackage, i18n: &I18n) {
     println!();
-    println!("Generated command:");
+    println!("{}", i18n.text("create.preview"));
     println!("  name       : {}", package.metadata.name);
+    println!("  description: {}", package.metadata.description);
     println!("  category   : {}", package.metadata.category);
     println!("  usage      : {}", package.metadata.usage);
     println!("  risk       : {}", package.metadata.risk.as_str());
     println!("  network    : {}", package.metadata.network);
+    println!("  effects:");
+    for effect in &package.metadata.effects {
+        println!("    - {effect}");
+    }
     println!("  implementations:");
     for implementation in &package.metadata.implementations {
         let platforms = implementation
@@ -275,8 +289,8 @@ fn print_preview(package: &package::ValidatedPackage) {
     }
 }
 
-fn confirm() -> Result<bool, String> {
-    print!("Install command? [y/N] ");
+fn confirm(i18n: &I18n) -> Result<bool, String> {
+    print!("{}", i18n.text("create.confirm"));
     io::stdout()
         .flush()
         .map_err(|error| format!("create: could not write prompt: {error}"))?;

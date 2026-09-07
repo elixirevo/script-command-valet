@@ -81,6 +81,9 @@ text = "SCV automatically disables prompts when stdin is not a terminal."
 [[notes]]
 text = "Generated packages store one authored language; changing ui.locale later does not translate existing user commands."
 
+[[notes]]
+text = "Code generation logs are hidden behind stage progress. Review the validated command summary before approving installation."
+
 [[examples]]
 command = "scv create \"Show directory sizes in descending order\""
 

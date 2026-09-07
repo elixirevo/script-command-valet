@@ -80,6 +80,8 @@ new approval.
   listing, and retention.
 - `src/builtin/create.rs`: coordinates only the user flow and does not own provider
   or storage details.
+- `src/progress.rs`: owns generation stage progress on stderr and the terminal-only
+  spinner, stopping and joining the animation before previews, prompts, or errors.
 - `src/builtin/history.rs`: lists history and coordinates confirmed reruns.
 - `docs/SCRIPT_GUIDE.md`: canonical repository-development and platform-behavior
   guide. It is not a runtime resource for the installed binary.
@@ -95,6 +97,28 @@ Root `AGENTS.md` and `CLAUDE.md` are entrypoints for developers who run an agent
 the product repository. They are not copied into a temporary generation workspace.
 SCV supplies the prompt directly, so provider-specific file discovery is not part of
 the generation contract.
+
+## Generation progress and approval
+
+Both modes show four SCV-owned stages: preparing the request, generating the
+command, validating the package, and readiness for installation or execution
+approval. Human progress follows `ui.locale`, independently of the package's
+`--locale`. A capable stderr terminal gets a rotating indicator during work; pipes,
+files, and `TERM=dumb` get plain stage lines without animation or control sequences.
+The animation is stopped on success and on errors before any preview or prompt.
+
+All three adapters use the shared quiet process runner. Provider stdout and stderr
+are discarded at the process boundary, so prompts, source code, tool calls, and
+final agent responses do not appear in the terminal and cannot accumulate in memory.
+Failures report the provider and exit status without replaying its transcript.
+SCV still sends Codex and Claude their prompt over stdin and closes the pipe after
+writing it; Agy receives its prompt as an argument with null stdin.
+
+The final preview retains the description and declared risk, network use, effects,
+implementations, and validation checks. Consent remains explicit: `create` asks to
+install, while one-shot mode asks to save to history and execute. No spinner runs
+during consent or execution. The executed command's own stdout and stderr remain
+visible after approval. `--yes` and `--no-input` keep their existing semantics.
 
 ## Generated package language
 

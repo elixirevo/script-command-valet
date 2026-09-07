@@ -32,7 +32,7 @@ pub fn run(
         "add" => add::run(arguments, paths, registry),
         "apply" => apply::run(arguments, paths),
         "config" => config::run(arguments, paths, i18n),
-        "create" => create::run(arguments, paths, registry),
+        "create" => create::run(arguments, paths, registry, i18n),
         "history" => history::run(arguments, paths, i18n),
         "rm" => remove::run(arguments, paths, registry),
         "list" => list::run(arguments, registry, i18n),

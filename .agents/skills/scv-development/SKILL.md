@@ -60,6 +60,10 @@ layout, security boundaries, or external side effects.
   contract. Materialize only that mode's metadata and source templates; never expose
   persistent argument, help, interaction, or dry-run scaffolding to one-shot
   generation.
+- Keep generation transcripts hidden at the adapter process boundary. Use SCV-owned
+  localized stage progress and a terminal-only spinner; stop it before the validated
+  summary and explicit installation or execution consent. Keep approved command
+  output visible and redirected progress free of animation.
 - Keep credentials with the provider CLI or system Git. Do not weaken sandbox,
   approval, confirmation, non-TTY, or dry-run boundaries through model options.
 - Keep the Codex, Claude, and Agy adapters explicit and provider-specific. Reject

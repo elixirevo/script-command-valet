@@ -3,7 +3,9 @@ mod claude;
 mod codex;
 
 use std::collections::BTreeMap;
+use std::io::Write;
 use std::path::Path;
+use std::process::{Command, Stdio};
 
 pub struct GenerateRequest<'a> {
     pub workspace: &'a Path,
@@ -49,12 +51,59 @@ impl Effort {
 
 pub trait AgentAdapter {
     fn name(&self) -> &'static str;
-    fn executable(&self) -> &'static str;
     fn supports_agent_options(&self) -> bool;
     fn validate_effort(&self, _effort: Option<Effort>) -> Result<(), String> {
         Ok(())
     }
     fn generate(&self, request: &GenerateRequest<'_>) -> Result<(), String>;
+}
+
+/// Provider transcripts can contain prompts, source, and tool output. Discard
+/// both streams at the process boundary, including on failure, without buffering
+/// unbounded output. SCV owns progress and the final approval preview.
+fn run_quietly(command: &mut Command, agent: &str, prompt: Option<&str>) -> Result<(), String> {
+    command
+        .stdin(if prompt.is_some() {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        })
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    let mut child = command.spawn().map_err(|error| {
+        if error.kind() == std::io::ErrorKind::NotFound {
+            format!("agent '{agent}' is not installed or is not available on PATH")
+        } else {
+            format!("could not start agent '{agent}': {error}")
+        }
+    })?;
+    if let Some(prompt) = prompt {
+        // Taking and dropping stdin sends EOF even when the prompt is empty.
+        let sent = child
+            .stdin
+            .take()
+            .ok_or_else(|| format!("could not open stdin for agent '{agent}'"))
+            .and_then(|mut stdin| {
+                stdin
+                    .write_all(prompt.as_bytes())
+                    .map_err(|error| format!("could not send request to agent '{agent}': {error}"))
+            });
+        if let Err(error) = sent {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(error);
+        }
+    }
+    let status = child
+        .wait()
+        .map_err(|error| format!("could not wait for agent '{agent}': {error}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "agent '{agent}' failed with status {status}. Check the agent's authentication and configuration"
+        ))
+    }
 }
 
 pub fn adapter(name: &str) -> Result<Box<dyn AgentAdapter>, String> {

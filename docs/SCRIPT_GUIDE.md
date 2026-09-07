@@ -327,6 +327,14 @@ confirmed execution and machine-local history.
   workspace `templates/` names. One-shot templates use exact zero-input usage and do
   not contain persistent help or interaction scaffolding.
 - SCV injects the prompt explicitly and does not depend on provider file discovery.
+- Both generation modes hide provider stdout and stderr, including failure
+  transcripts. Show SCV-owned preparation, generation, validation, and approval
+  stages in `ui.locale` on stderr. Animate a spinner only on a capable terminal;
+  redirected output and `TERM=dumb` receive plain stage lines. Stop the spinner
+  before displaying errors, the validated summary, or the consent prompt.
+- Approval previews retain the command description, risk, network use, and effects.
+  One-shot execution output is visible after consent; persistent creation asks for
+  installation consent and does not execute the package.
 - The explicit prompt places the selected output language outside the escaped,
   untrusted user request and defines exactly which human-facing fields are localized.
 - The adapter uses a temporary workspace as its working directory and receives no SCV

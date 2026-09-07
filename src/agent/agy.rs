@@ -1,15 +1,11 @@
-use std::process::{Command, Stdio};
+use std::process::Command;
 
-use super::{AgentAdapter, Effort, GenerateRequest};
+use super::{AgentAdapter, Effort, GenerateRequest, run_quietly};
 
 pub struct AgyAdapter;
 
 impl AgentAdapter for AgyAdapter {
     fn name(&self) -> &'static str {
-        "agy"
-    }
-
-    fn executable(&self) -> &'static str {
         "agy"
     }
 
@@ -23,23 +19,7 @@ impl AgentAdapter for AgyAdapter {
 
     fn generate(&self, request: &GenerateRequest<'_>) -> Result<(), String> {
         validate_request(request)?;
-        let mut command = build_command(request);
-        command
-            .stdin(Stdio::null())
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit());
-        let status = command.status().map_err(|error| {
-            if error.kind() == std::io::ErrorKind::NotFound {
-                "agent 'agy' is not installed or is not available on PATH".to_string()
-            } else {
-                format!("could not start agent 'agy': {error}")
-            }
-        })?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err(format!("agent 'agy' failed with status {status}"))
-        }
+        run_quietly(&mut build_command(request), self.name(), None)
     }
 }
 

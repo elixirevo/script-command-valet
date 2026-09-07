@@ -196,6 +196,13 @@ shows a change summary before approval. Only a fast-forward is accepted. Git and
 
 ## Agent-powered creation
 
+Generation logs and source code stay hidden. SCV shows four stages—preparation,
+generation, validation, and approval—with a rotating indicator in the terminal.
+The final summary shows the command description, risk, network use, and effects
+before asking for approval to run a one-shot command or install a persistent one.
+Progress uses `ui.locale` and stderr; redirected logs contain plain stage lines.
+After execution approval, the command's own output appears normally.
+
 Generate, inspect, save, and immediately run a one-shot command:
 
 ```bash

@@ -1,6 +1,6 @@
-use std::process::{Command, Stdio};
+use std::process::Command;
 
-use super::{AgentAdapter, GenerateRequest};
+use super::{AgentAdapter, GenerateRequest, run_quietly};
 
 pub struct CodexAdapter;
 
@@ -9,45 +9,16 @@ impl AgentAdapter for CodexAdapter {
         "codex"
     }
 
-    fn executable(&self) -> &'static str {
-        "codex"
-    }
-
     fn supports_agent_options(&self) -> bool {
         true
     }
 
     fn generate(&self, request: &GenerateRequest<'_>) -> Result<(), String> {
-        let mut command = build_command(request);
-        command
-            .stdin(Stdio::piped())
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit());
-        let mut child = command.spawn().map_err(|error| {
-            if error.kind() == std::io::ErrorKind::NotFound {
-                "agent 'codex' is not installed or is not available on PATH".to_string()
-            } else {
-                format!("could not start agent 'codex': {error}")
-            }
-        })?;
-        {
-            use std::io::Write;
-            let stdin = child
-                .stdin
-                .as_mut()
-                .ok_or_else(|| "could not open stdin for agent 'codex'".to_string())?;
-            stdin
-                .write_all(request.prompt.as_bytes())
-                .map_err(|error| format!("could not send request to agent 'codex': {error}"))?;
-        }
-        let status = child
-            .wait()
-            .map_err(|error| format!("could not wait for agent 'codex': {error}"))?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err(format!("agent 'codex' failed with status {status}"))
-        }
+        run_quietly(
+            &mut build_command(request),
+            self.name(),
+            Some(request.prompt),
+        )
     }
 }
 

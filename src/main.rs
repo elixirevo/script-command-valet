@@ -13,6 +13,7 @@ mod metadata;
 mod oneshot;
 mod package;
 mod paths;
+mod progress;
 mod source;
 mod storage;
 mod sync;
