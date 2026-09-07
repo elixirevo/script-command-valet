@@ -112,8 +112,8 @@ The animation is stopped on success and on errors before any preview or prompt.
 All three adapters use the shared quiet process runner. Provider stderr is discarded;
 a concurrent reader drains structured stdout before stdin delivery can block. It
 buffers at most one 1 MiB event, skips oversized lines through their newline, and
-retains only numeric usage and completion status. Prompts, source code, tool calls,
-and final responses never appear in the terminal or get persisted by SCV. Failures
+retains numeric usage, completion status, and bounded temporary tool identifiers
+for deduplication. Prompts, source code, tool inputs/results, and final responses never appear in the terminal or get persisted by SCV. Failures
 report the provider and exit status without replaying its transcript; recognized
 failed completion events also prevent approval even if the process exits zero.
 SCV still sends Codex and Claude their prompt over stdin and closes the pipe after
@@ -131,8 +131,9 @@ visible after approval. `--yes` and `--no-input` keep their existing semantics.
 ### Completion statistics
 
 Before approval, both modes show one localized stderr summary with elapsed seconds
-and reported total, input, and output tokens. The monotonic timer starts before
-workspace preparation and stops after validation, excluding the user's approval
+and reported cumulative total, input, and output tokens. A second line shows cache
+reads, non-cached input, and distinct observed tool calls when available. The
+monotonic timer starts before workspace preparation and stops after validation, excluding the user's approval
 wait, installation or history storage, and execution. Statistics are a view of this
 generation request; they do not change history manifests or machine-readable JSON.
 
@@ -140,15 +141,39 @@ Adapters request these documented event formats:
 
 - [Codex JSONL](https://learn.chatgpt.com/docs/non-interactive-mode): `--json`,
   using `turn.completed.usage`. Sum completed turns, not individual tool events.
-  Input includes cached tokens and output includes reasoning tokens.
+  Input includes cached tokens and output includes reasoning tokens. Extract
+  `cached_input_tokens` as a subset, not an additional input amount.
 - [Claude streaming JSON](https://code.claude.com/docs/en/headless):
   `--output-format stream-json --verbose`, using the root `result` event. Prefer
   summed `modelUsage` when provided, otherwise use `usage`. Include cache-read and
   cache-creation counts in input; do not add intermediate assistant messages or
-  cumulative result snapshots. See [Claude usage accounting](https://code.claude.com/docs/en/agent-sdk/cost-tracking).
+  cumulative result snapshots. Cache reads are `cacheReadInputTokens` or
+  `cache_read_input_tokens`; non-cached input includes cache creation. See [Claude usage accounting](https://code.claude.com/docs/en/agent-sdk/cost-tracking).
 - [Agy streaming JSON](https://www.antigravity.google/docs/cli/headless/):
-  `--output-format stream-json`, using `result.usage`. Input and output already
-  include cache reads and thinking; do not add step updates to the final totals.
+  `--output-format stream-json`, using `result.usage`. Do not add step updates or
+  thinking/cache counts to the final totals. Cache inclusion is not consistently
+  defined by the provider, so the cache/non-cached split is unavailable.
+
+Cache breakdown requires a valid reported cache-read count for every aggregated
+turn/model, no greater than its normalized input. Missing or invalid cache data
+leaves valid token totals intact. An unfinished Codex turn invalidates earlier
+partial totals. These cumulative counts include reused context across model calls;
+they are not the size of the initial SCV prompt.
+
+Count distinct Codex `item.completed` operations for command execution, file change,
+MCP calls, and web search by `item.id`. Exclude messages, reasoning, plans, and
+started/updated snapshots. Count Claude assistant `tool_use` blocks by block `id`
+(not the shared assistant message id). Count Agy `step_update` tools in `DONE`
+state by `(conversation_id, step_index)`. Completed failed tools also count as
+attempted operations; a shell operation may contain several shell commands. This
+is an observed tool count, not a model request count.
+
+Keep at most 4,096 distinct tool identifiers, each component at most 128 bytes,
+only in memory. Malformed/oversized events, unknown tool event shapes, invalid
+identifiers, or exceeding that bound make the tool count unavailable instead of displaying an undercount. Require
+a provider completion before showing zero or a count. Later intact completion
+usage may still supply token totals after a discarded tool event. SCV does not
+persist event text or tool identifiers.
 
 Missing, malformed, oversized, incomplete, or overflowing usage is shown as
 unavailable, not zero and not an estimate derived from code length. Valid zero usage

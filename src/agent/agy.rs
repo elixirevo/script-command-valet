@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use super::{AgentAdapter, Effort, GenerateRequest, TokenUsage, UsageFormat, run_quietly};
+use super::{AgentAdapter, Effort, GenerateRequest, GenerationUsage, UsageFormat, run_quietly};
 
 pub struct AgyAdapter;
 
@@ -17,7 +17,7 @@ impl AgentAdapter for AgyAdapter {
         validate_effort(effort)
     }
 
-    fn generate(&self, request: &GenerateRequest<'_>) -> Result<Option<TokenUsage>, String> {
+    fn generate(&self, request: &GenerateRequest<'_>) -> Result<GenerationUsage, String> {
         validate_request(request)?;
         run_quietly(
             &mut build_command(request),

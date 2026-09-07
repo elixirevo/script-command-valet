@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use super::{AgentAdapter, GenerateRequest, TokenUsage, UsageFormat, run_quietly};
+use super::{AgentAdapter, GenerateRequest, GenerationUsage, UsageFormat, run_quietly};
 
 pub struct CodexAdapter;
 
@@ -13,7 +13,7 @@ impl AgentAdapter for CodexAdapter {
         true
     }
 
-    fn generate(&self, request: &GenerateRequest<'_>) -> Result<Option<TokenUsage>, String> {
+    fn generate(&self, request: &GenerateRequest<'_>) -> Result<GenerationUsage, String> {
         run_quietly(
             &mut build_command(request),
             self.name(),

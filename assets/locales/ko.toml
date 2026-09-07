@@ -67,8 +67,12 @@
 "generation.done" = "완료"
 "generation.failed" = "실패"
 "generation.summary" = "생성 완료 · {seconds}초 · {tokens}"
-"generation.tokens" = "토큰 {total} (입력 {input} / 출력 {output})"
+"generation.tokens" = "누적 토큰 {total} (입력 {input} / 출력 {output})"
 "generation.tokens_unavailable" = "토큰 사용량 확인 불가"
+"generation.cache" = "입력 캐시 {cached} / 비캐시 {uncached}"
+"generation.cache_unavailable" = "입력 캐시 내역 확인 불가"
+"generation.tools" = "도구 호출 {count}회"
+"generation.tools_unavailable" = "도구 호출 수 확인 불가"
 "create.preview" = "생성된 명령:"
 "create.confirm" = "명령을 설치할까요? [y/N] "
 "create.cancelled" = "취소했습니다. 설치한 명령이 없습니다."
@@ -230,7 +234,7 @@ notes = [
   "생성 package는 선택한 언어 하나를 원문으로 저장하므로 나중에 ui.locale을 바꿔도 기존 사용자 command는 번역되지 않습니다.",
   "코드 생성 로그는 숨기고 단계별 진행 상태를 표시합니다. 검증 후 명령 요약을 확인하고 설치를 승인합니다.",
   "사용 가능한 시스템 도구로 간결하게 구현하도록 생성합니다. 외부 도구의 출력 언어는 그대로 유지합니다.",
-  "승인 전에 생성 소요 시간과 CLI가 보고한 토큰 사용량을 표시합니다. 준비와 검증 시간을 포함하며, 사용량을 받지 못하면 확인 불가로 표시합니다.",
+  "승인 전에 생성 소요 시간, 누적 토큰, 제공된 캐시 내역과 도구 호출 수를 표시합니다. 준비와 검증 시간을 포함하며, 받지 못한 지표는 확인 불가로 표시합니다.",
 ]
 
 [builtins.create.arguments]

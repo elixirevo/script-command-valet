@@ -55,10 +55,13 @@ set -eu
 # Write more than a pipe buffer before reading stdin, including terminal codes.
 i=0
 while [ "$i" -lt 3000 ]; do
-    printf '\033[31mHIDDEN_TRANSCRIPT source and tool output\033[0m\n'
+    printf '%s\n' '{"type":"diagnostic","message":"\u001b[31mHIDDEN_TRANSCRIPT source and tool output\u001b[0m"}'
     printf 'HIDDEN_TRANSCRIPT reasoning and diagnostics\n' >&2
     i=$((i + 1))
 done
+if [ "${SCV_TEST_MALFORMED_STREAM:-0}" = 1 ]; then
+    printf '\033[31mHIDDEN_TRANSCRIPT malformed stdout\033[0m\n'
+fi
 case "$0" in
     */codex)
         while [ "$1" != "--cd" ]; do shift; done
@@ -80,6 +83,12 @@ case "$0" in
         if [ "${SCV_TEST_RESULT_ERROR:-0}" = 1 ]; then
             printf '%s\n' '{"type":"turn.failed","error":{"message":"HIDDEN_FAILURE"}}'
         else
+            printf '%s\n' '{"type":"turn.started"}'
+            printf '%s\n' '{"type":"item.started","item":{"id":"item_1","type":"command_execution","command":"HIDDEN_TOOL","status":"in_progress"}}'
+            printf '%s\n' '{"type":"item.updated","item":{"id":"item_1","type":"command_execution","aggregated_output":"HIDDEN_TOOL_OUTPUT","status":"in_progress"}}'
+            printf '%s\n' '{"type":"item.completed","item":{"id":"item_1","type":"command_execution","status":"completed"}}'
+            printf '%s\n' '{"type":"item.completed","item":{"id":"item_1","type":"command_execution","status":"completed"}}'
+            printf '%s\n' '{"type":"item.completed","item":{"id":"item_2","type":"file_change","changes":[{"path":"HIDDEN_PATH","kind":"add"}],"status":"completed"}}'
             printf '%s\n' '{"type":"turn.completed","usage":{"input_tokens":12000,"cached_input_tokens":10000,"output_tokens":800}}'
         fi
         ;;
@@ -87,13 +96,20 @@ case "$0" in
         if [ "${SCV_TEST_RESULT_ERROR:-0}" = 1 ]; then
             printf '%s\n' '{"type":"result","is_error":true,"result":"HIDDEN_FAILURE"}'
         else
-            printf '%s\n' '{"type":"result","is_error":false,"result":"HIDDEN_RESPONSE","usage":{"input_tokens":1000,"cache_read_input_tokens":9000,"cache_creation_input_tokens":2000,"output_tokens":800}}'
+            printf '%s\n' '{"type":"assistant","message":{"id":"message_1","content":[{"type":"tool_use","id":"tool_1","name":"Write","input":{"content":"HIDDEN_SOURCE"}}]}}'
+            printf '%s\n' '{"type":"assistant","message":{"id":"message_1","content":[{"type":"tool_use","id":"tool_1","name":"Write","input":{"content":"HIDDEN_SOURCE"}}]}}'
+            printf '%s\n' '{"type":"assistant","message":{"id":"message_1","content":[{"type":"tool_use","id":"tool_2","name":"Read","input":{"file_path":"HIDDEN_PATH"}}]}}'
+            printf '%s\n' '{"type":"result","is_error":false,"result":"HIDDEN_RESPONSE","usage":{"input_tokens":1000,"cache_read_input_tokens":10000,"cache_creation_input_tokens":1000,"output_tokens":800}}'
         fi
         ;;
     */agy)
         if [ "${SCV_TEST_RESULT_ERROR:-0}" = 1 ]; then
             printf '%s\n' '{"event":"result","result":{"status":"ERROR","error":"HIDDEN_FAILURE"}}'
         else
+            printf '%s\n' '{"event":"step_update","step_update":{"conversation_id":"conversation_1","step_index":1,"step_type":"tool","state":"ACTIVE","tool_name":"HIDDEN_TOOL"}}'
+            printf '%s\n' '{"event":"step_update","step_update":{"conversation_id":"conversation_1","step_index":1,"step_type":"tool","state":"DONE","tool_info":{"output":"HIDDEN_TOOL_OUTPUT"}}}'
+            printf '%s\n' '{"event":"step_update","step_update":{"conversation_id":"conversation_1","step_index":1,"step_type":"tool","state":"DONE"}}'
+            printf '%s\n' '{"event":"step_update","step_update":{"conversation_id":"conversation_1","step_index":2,"step_type":"tool","state":"DONE"}}'
             printf '%s\n' '{"event":"result","result":{"status":"SUCCESS","response":"HIDDEN_RESPONSE","usage":{"input_tokens":12000,"cache_read_tokens":10000,"output_tokens":800,"thinking_tokens":300,"total_tokens":12800}}}'
         fi
         ;;
@@ -196,9 +212,19 @@ fn hides_all_provider_streams_but_preserves_progress_preview_and_approved_output
                 assert!(line.starts_with(&format!("[{}/4]", index + 1)));
             }
             assert_eq!(stderr.matches("Generation complete ·").count(), 1);
-            assert!(stderr.contains("Tokens 12,800 (input 12,000 / output 800)"));
+            assert!(stderr.contains("Cumulative tokens 12,800 (input 12,000 / output 800)"));
+            let cache = if agent == "agy" {
+                "Input cache breakdown unavailable"
+            } else {
+                "Input cache 10,000 / non-cached 2,000"
+            };
+            assert!(
+                stderr.contains(&format!("{cache} · Tool calls 2")),
+                "{agent}: {stderr}"
+            );
             assert!(stderr.find("[3/4]").unwrap() < stderr.find("Generation complete").unwrap());
             assert!(stderr.find("Generation complete").unwrap() < stderr.find("[4/4]").unwrap());
+            assert!(stderr.find("Input cache").unwrap() < stderr.find("[4/4]").unwrap());
             assert!(!stdout.contains("Generation complete"));
             assert!(stdout.contains("Show the approved result"));
             assert!(stdout.contains("prints the approved result"));
@@ -316,7 +342,8 @@ fn progress_uses_the_ui_locale_independently_of_the_generated_package_locale() {
         assert!(stderr.contains("[2/4] codex로 명령 생성 중"));
         assert!(stderr.contains("승인 준비 완료"));
         assert!(stderr.contains("생성 완료 ·"));
-        assert!(stderr.contains("토큰 12,800 (입력 12,000 / 출력 800)"));
+        assert!(stderr.contains("누적 토큰 12,800 (입력 12,000 / 출력 800)"));
+        assert!(stderr.contains("입력 캐시 10,000 / 비캐시 2,000 · 도구 호출 2회"));
         let prompt = fs::read_to_string(fixture.root.join("prompt")).unwrap();
         assert!(prompt.contains("human-facing text in English (en)"));
     }
@@ -337,6 +364,33 @@ fn missing_usage_is_explicit_and_does_not_block_generation() {
             assert!(output.status.success(), "{stderr}");
             assert!(stderr.contains("Generation complete ·"));
             assert!(stderr.contains("Tokens unavailable"));
+            assert!(stderr.contains("Input cache breakdown unavailable"));
+            assert!(stderr.contains("Tool call count unavailable"));
+            fixture.assert_workspace_cleaned();
+        }
+    }
+}
+
+#[test]
+fn malformed_stdout_preserves_completion_totals_without_guessing_tool_calls() {
+    for agent in ["codex", "claude", "agy"] {
+        for persistent in [false, true] {
+            let fixture = Fixture::new();
+            let output = fixture
+                .command(persistent, agent)
+                .args(["--yes", "--no-input"])
+                .env("SCV_TEST_MALFORMED_STREAM", "1")
+                .output()
+                .unwrap();
+            let (_, stderr) = visible_output(&output);
+            assert!(output.status.success(), "{agent}: {stderr}");
+            assert!(stderr.contains("Cumulative tokens 12,800 (input 12,000 / output 800)"));
+            assert!(
+                stderr.contains("Tool call count unavailable"),
+                "{agent}: {stderr}"
+            );
+            assert!(!stderr.contains("Tool calls 2"));
+            assert!(stderr.contains("[4/4]"));
             fixture.assert_workspace_cleaned();
         }
     }

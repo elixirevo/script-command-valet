@@ -3,6 +3,8 @@ mod claude;
 mod codex;
 mod usage;
 
+pub use usage::GenerationUsage;
+#[cfg(test)]
 pub use usage::TokenUsage;
 use usage::{UsageFormat, read_usage};
 
@@ -59,7 +61,7 @@ pub trait AgentAdapter {
     fn validate_effort(&self, _effort: Option<Effort>) -> Result<(), String> {
         Ok(())
     }
-    fn generate(&self, request: &GenerateRequest<'_>) -> Result<Option<TokenUsage>, String>;
+    fn generate(&self, request: &GenerateRequest<'_>) -> Result<GenerationUsage, String>;
 }
 
 /// Suppress provider transcripts while extracting only reported usage from bounded
@@ -69,7 +71,7 @@ fn run_quietly(
     agent: &str,
     prompt: Option<&str>,
     format: UsageFormat,
-) -> Result<Option<TokenUsage>, String> {
+) -> Result<GenerationUsage, String> {
     command
         .stdin(if prompt.is_some() {
             Stdio::piped()
@@ -138,7 +140,7 @@ fn run_quietly(
     if report.failed {
         return Err(format!("agent '{agent}' reported a failed generation"));
     }
-    Ok(report.tokens)
+    Ok(report.usage)
 }
 
 pub fn adapter(name: &str) -> Result<Box<dyn AgentAdapter>, String> {

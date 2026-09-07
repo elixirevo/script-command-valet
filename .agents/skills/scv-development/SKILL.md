@@ -70,6 +70,9 @@ layout, security boundaries, or external side effects.
   output visible and redirected progress free of animation. Read bounded completion
   events for reported token usage and show elapsed generation time before approval;
   follow the guide's timing and accounting rules and never estimate missing usage.
+  Distinguish cumulative input from its cache-read subset and count deduplicated
+  tool operations, not model requests. Bound temporary identifier storage and show
+  unavailable metrics when events or cache details are incomplete.
 - Keep credentials with the provider CLI or system Git. Do not weaken sandbox,
   approval, confirmation, non-TTY, or dry-run boundaries through model options.
 - Keep the Codex, Claude, and Agy adapters explicit and provider-specific. Reject

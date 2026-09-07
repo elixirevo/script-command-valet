@@ -355,12 +355,17 @@ confirmed execution and machine-local history.
   redirected output and `TERM=dumb` receive plain stage lines. Stop the spinner
   before displaying errors, the validated summary, or the consent prompt.
 - After successful generation and validation, show elapsed time and reported input,
-  output, and total tokens on stderr in `ui.locale`. Measure from workspace
+  output, and cumulative total tokens on stderr in `ui.locale`. Show reported cache
+  reads and non-cached input separately when their relationship is defined, plus
+  distinct observed tool calls (not model requests). Missing cache details or tool
+  counts are unavailable, not zero. Measure from workspace
   preparation through validation with a monotonic clock; exclude approval waiting,
   installation, history storage, and command execution. Do not estimate missing
   usage or present it as zero. Parse bounded provider completion events without
   displaying or persisting transcripts, and never double-count cached or reasoning
-  tokens already included in a provider's totals.
+  tokens already included in a provider's totals. Keep event and temporary identifier
+  storage bounded; incomplete or discarded events must not produce partial tool
+  counts presented as complete.
 - Approval previews retain the command description, risk, network use, and effects.
   Use a short review reminder and execution question for one-shot consent.
   One-shot execution output is visible after consent; persistent creation asks for

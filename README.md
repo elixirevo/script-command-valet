@@ -204,11 +204,21 @@ Progress uses `ui.locale` and stderr; redirected logs contain plain stage lines.
 After execution approval, the command's own output appears normally.
 
 Before approval, both modes show generation time and CLI-reported token usage, for
-example `Generation complete · 12.3s · Tokens 12,800 (input 12,000 / output 800)`.
+example:
+
+```text
+Generation complete · 12.3s · Cumulative tokens 12,800 (input 12,000 / output 800)
+Input cache 10,000 / non-cached 2,000 · Tool calls 2
+```
+
 Time covers preparation, generation, and validation; it excludes waiting for approval
 and executing the command. Codex, Claude, and Agy usage is read from their completion
-events, including cached input without counting it twice. Unreported usage appears
-as unavailable. This summary follows `ui.locale` and stays on stderr with progress.
+events. Cumulative input includes context reused across model calls. Codex and
+Claude show cache reads as a subset of input; Claude non-cached input includes cache
+creation. Agy's cache split is unavailable because its inclusion semantics are not
+specified consistently. Tool calls count distinct reported tool operations, not
+model requests. Missing or incomplete metrics appear as unavailable, never zero.
+This summary follows `ui.locale` and stays on stderr with progress.
 
 Both modes instruct the agent to prefer available system tools and the smallest
 correct implementation. A directory disk-usage request should use `du` and `sort`

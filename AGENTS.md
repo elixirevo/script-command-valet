@@ -49,7 +49,8 @@ When developing SCV:
     Compose a minimal shared contract with exactly one persistent or one-shot mode
     contract, and materialize only that mode's templates into the workspace.
     Follow the guide's implementation-choice rules in both generation modes.
-    Keep transcripts hidden when collecting provider-reported generation statistics.
+    Keep transcripts hidden when collecting provider-reported generation statistics;
+    distinguish cumulative tokens, cache reads, and observed tool calls.
 12. Keep installed source under `SCV_HOME`, execute only the validated current
     activation, and route managed source changes through the shared apply transaction.
 13. Do not add old executable names, environment aliases, flat metadata readers, or

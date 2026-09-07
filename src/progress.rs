@@ -3,7 +3,7 @@ use std::sync::mpsc::{self, Sender};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-use crate::agent::TokenUsage;
+use crate::agent::GenerationUsage;
 use crate::i18n::I18n;
 
 const FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -65,7 +65,7 @@ impl<'a> GenerationProgress<'a> {
         write_line(&format!("[4/4] {message}"));
     }
 
-    pub fn summary(elapsed: Duration, usage: Option<TokenUsage>, i18n: &I18n) {
+    pub fn summary(elapsed: Duration, usage: GenerationUsage, i18n: &I18n) {
         write_line(&format_summary(elapsed, usage, i18n));
     }
 
@@ -90,8 +90,8 @@ impl<'a> GenerationProgress<'a> {
     }
 }
 
-fn format_summary(elapsed: Duration, usage: Option<TokenUsage>, i18n: &I18n) -> String {
-    let tokens = match usage {
+fn format_summary(elapsed: Duration, usage: GenerationUsage, i18n: &I18n) -> String {
+    let tokens = match usage.tokens {
         Some(usage) => i18n.format(
             "generation.tokens",
             &[
@@ -102,13 +102,32 @@ fn format_summary(elapsed: Duration, usage: Option<TokenUsage>, i18n: &I18n) -> 
         ),
         None => i18n.text("generation.tokens_unavailable").to_string(),
     };
-    i18n.format(
+    let summary = i18n.format(
         "generation.summary",
         &[
             ("seconds", &format!("{:.1}", elapsed.as_secs_f64())),
             ("tokens", &tokens),
         ],
-    )
+    );
+    let cache = match usage.tokens.and_then(|tokens| {
+        tokens
+            .cached_input
+            .map(|cached| (cached, tokens.input - cached))
+    }) {
+        Some((cached, uncached)) => i18n.format(
+            "generation.cache",
+            &[
+                ("cached", &group_digits(cached)),
+                ("uncached", &group_digits(uncached)),
+            ],
+        ),
+        None => i18n.text("generation.cache_unavailable").to_string(),
+    };
+    let tools = match usage.tool_calls {
+        Some(count) => i18n.format("generation.tools", &[("count", &group_digits(count))]),
+        None => i18n.text("generation.tools_unavailable").to_string(),
+    };
+    format!("{summary}\n{cache} · {tools}")
 }
 
 fn group_digits(value: u64) -> String {
@@ -147,7 +166,7 @@ fn write_line(message: &str) {
 #[cfg(test)]
 mod tests {
     use super::format_summary;
-    use crate::agent::TokenUsage;
+    use crate::agent::{GenerationUsage, TokenUsage};
     use crate::i18n::{I18n, Locale};
     use std::time::Duration;
 
@@ -156,31 +175,38 @@ mod tests {
         let elapsed = Duration::from_millis(12345);
         let en = I18n::new(Locale::En).unwrap();
         let ko = I18n::new(Locale::Ko).unwrap();
-        let usage = Some(TokenUsage {
-            input: 12000,
-            output: 800,
-            total: 12800,
-        });
+        let usage = GenerationUsage {
+            tokens: Some(TokenUsage {
+                input: 12000,
+                output: 800,
+                total: 12800,
+                cached_input: Some(10000),
+            }),
+            tool_calls: Some(2),
+        };
         assert_eq!(
             format_summary(elapsed, usage, &en),
-            "Generation complete · 12.3s · Tokens 12,800 (input 12,000 / output 800)"
+            "Generation complete · 12.3s · Cumulative tokens 12,800 (input 12,000 / output 800)\nInput cache 10,000 / non-cached 2,000 · Tool calls 2"
         );
         assert_eq!(
             format_summary(elapsed, usage, &ko),
-            "생성 완료 · 12.3초 · 토큰 12,800 (입력 12,000 / 출력 800)"
+            "생성 완료 · 12.3초 · 누적 토큰 12,800 (입력 12,000 / 출력 800)\n입력 캐시 10,000 / 비캐시 2,000 · 도구 호출 2회"
         );
-        assert!(format_summary(elapsed, None, &ko).ends_with("토큰 사용량 확인 불가"));
-        assert!(
-            format_summary(
-                elapsed,
-                Some(TokenUsage {
-                    input: 0,
-                    output: 0,
-                    total: 0
-                }),
-                &en
-            )
-            .ends_with("Tokens 0 (input 0 / output 0)")
-        );
+        let unknown = format_summary(elapsed, GenerationUsage::default(), &ko);
+        assert!(unknown.contains("토큰 사용량 확인 불가"));
+        assert!(unknown.contains("입력 캐시 내역 확인 불가"));
+        assert!(unknown.contains("도구 호출 수 확인 불가"));
+        let zero = GenerationUsage {
+            tokens: Some(TokenUsage {
+                input: 0,
+                output: 0,
+                total: 0,
+                cached_input: Some(0),
+            }),
+            tool_calls: Some(0),
+        };
+        let zero = format_summary(elapsed, zero, &en);
+        assert!(zero.contains("Cumulative tokens 0 (input 0 / output 0)"));
+        assert!(zero.contains("Input cache 0 / non-cached 0 · Tool calls 0"));
     }
 }
