@@ -62,7 +62,8 @@ When developing SCV:
     for an argument-free TTY session and never contacts a remote, commits, pushes, or
     overwrites an existing Git origin. Explicit `scv init --reconfigure` preserves
     source commands, keeps omitted settings, and changes or removes `origin` only
-    when the user selects that action.
+    when the user selects that action. Interactive setup cancellation must happen
+    before any source, Git, or preference mutation.
 17. Keep generated-package localization explicit: `--locale` on persistent or
     one-shot generation overrides `ui.locale`, applies only to free-form user-facing
     text, and stores one authored language without translating identifiers or

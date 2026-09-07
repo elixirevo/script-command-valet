@@ -1,8 +1,13 @@
 use std::ffi::OsString;
+use std::fmt;
 use std::fs;
-use std::io::{self, Write};
+use std::io;
 use std::path::Path;
 use std::process::{Command, Output};
+
+use inquire::error::InquireError;
+use inquire::validator::Validation;
+use inquire::{Select, Text};
 
 use crate::agent;
 use crate::config::Settings;
@@ -27,6 +32,34 @@ enum RemoteSelection {
     Keep,
     Set(String),
     Remove,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RemoteMenuAction {
+    Keep,
+    Change,
+    Remove,
+}
+
+#[derive(Debug, Clone)]
+struct MenuChoice<T> {
+    label: String,
+    value: T,
+}
+
+impl<T> MenuChoice<T> {
+    fn new(label: impl Into<String>, value: T) -> Self {
+        Self {
+            label: label.into(),
+            value,
+        }
+    }
+}
+
+impl<T> fmt::Display for MenuChoice<T> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(&self.label)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -187,35 +220,33 @@ fn parse(arguments: &[OsString]) -> Result<InitOptions, String> {
 }
 
 fn prompt_locale(default: Locale) -> Result<Locale, String> {
-    loop {
-        let answer = prompt(&format!(
-            "SCV language / 언어 [en/ko] ({}): ",
-            default.as_str()
-        ))?;
-        if answer.is_empty() {
-            return Ok(default);
-        }
-        match answer.as_str() {
-            "1" | "en" | "English" | "english" => return Ok(Locale::En),
-            "2" | "ko" | "한국어" => return Ok(Locale::Ko),
-            _ => eprintln!("Choose en or ko. / en 또는 ko를 선택하세요."),
-        }
-    }
+    select(
+        "SCV language / 언어",
+        vec![
+            MenuChoice::new("English (en)", Locale::En),
+            MenuChoice::new("한국어 (ko)", Locale::Ko),
+        ],
+        usize::from(default == Locale::Ko),
+        "Use ↑/↓ and Enter. / ↑/↓와 Enter를 사용하세요. Esc cancels. / Esc는 취소입니다.",
+    )
 }
 
 fn prompt_agent(i18n: &I18n, default: &str) -> Result<String, String> {
-    loop {
-        let answer = prompt(&i18n.format("init.agent_prompt", &[("default", default)]))?;
-        let selected = if answer.is_empty() {
-            default.to_string()
-        } else {
-            answer
-        };
-        if agent::adapter(&selected).is_ok() {
-            return Ok(selected);
-        }
-        eprintln!("{}", i18n.text("init.invalid_agent"));
-    }
+    let agents = ["codex", "claude", "agy"];
+    let default_index = agents
+        .iter()
+        .position(|candidate| *candidate == default)
+        .unwrap_or(0);
+    select(
+        i18n.text("init.agent_select"),
+        vec![
+            MenuChoice::new("Codex", "codex".to_string()),
+            MenuChoice::new("Claude", "claude".to_string()),
+            MenuChoice::new("Agy", "agy".to_string()),
+        ],
+        default_index,
+        i18n.text("init.select_help"),
+    )
 }
 
 fn prompt_remote(
@@ -223,40 +254,95 @@ fn prompt_remote(
     current: Option<&str>,
     reconfigure: bool,
 ) -> Result<RemoteSelection, String> {
-    let message = if reconfigure {
-        i18n.format(
-            "init.remote_reconfigure_prompt",
-            &[(
-                "current",
-                current.unwrap_or_else(|| i18n.text("common.none")),
-            )],
-        )
-    } else {
-        i18n.text("init.remote_prompt").to_string()
-    };
-    let answer = prompt(&message)?;
-    if answer.is_empty() {
-        Ok(RemoteSelection::Keep)
-    } else if reconfigure && answer == "-" {
-        Ok(RemoteSelection::Remove)
-    } else {
-        Ok(RemoteSelection::Set(answer))
+    let choices = remote_menu_choices(i18n, current, reconfigure);
+
+    match select(
+        i18n.text("init.remote_select"),
+        choices,
+        0,
+        i18n.text("init.select_help"),
+    )? {
+        RemoteMenuAction::Keep => Ok(RemoteSelection::Keep),
+        RemoteMenuAction::Remove => Ok(RemoteSelection::Remove),
+        RemoteMenuAction::Change => prompt_remote_value(i18n).map(RemoteSelection::Set),
     }
 }
 
-fn prompt(message: &str) -> Result<String, String> {
-    print!("{message}");
-    io::stdout()
-        .flush()
-        .map_err(|error| format!("init: could not write prompt: {error}"))?;
-    let mut answer = String::new();
-    let bytes = io::stdin()
-        .read_line(&mut answer)
-        .map_err(|error| format!("init: could not read input: {error}"))?;
-    if bytes == 0 {
-        return Err("init: input ended before setup completed".to_string());
+fn remote_menu_choices(
+    i18n: &I18n,
+    current: Option<&str>,
+    reconfigure: bool,
+) -> Vec<MenuChoice<RemoteMenuAction>> {
+    let mut choices = Vec::new();
+    if let Some(current) = current {
+        choices.push(MenuChoice::new(
+            i18n.format("init.remote_keep", &[("current", current)]),
+            RemoteMenuAction::Keep,
+        ));
+    } else if reconfigure {
+        choices.push(MenuChoice::new(
+            i18n.text("init.remote_keep_none"),
+            RemoteMenuAction::Keep,
+        ));
+    } else {
+        choices.push(MenuChoice::new(
+            i18n.text("init.remote_skip"),
+            RemoteMenuAction::Keep,
+        ));
     }
-    Ok(answer.trim().to_string())
+    if current.is_none() || reconfigure {
+        choices.push(MenuChoice::new(
+            i18n.text("init.remote_configure"),
+            RemoteMenuAction::Change,
+        ));
+    }
+    if reconfigure && current.is_some() {
+        choices.push(MenuChoice::new(
+            i18n.text("init.remote_remove"),
+            RemoteMenuAction::Remove,
+        ));
+    }
+    choices
+}
+
+fn prompt_remote_value(i18n: &I18n) -> Result<String, String> {
+    Text::new(i18n.text("init.remote_input"))
+        .with_help_message(i18n.text("init.remote_input_help"))
+        .with_validator(|input: &str| {
+            Ok::<Validation, inquire::CustomUserError>(match validate_remote(input) {
+                Ok(()) => Validation::Valid,
+                Err(error) => Validation::Invalid(error.into()),
+            })
+        })
+        .prompt()
+        .map_err(prompt_error)
+}
+
+fn select<T>(
+    message: &str,
+    choices: Vec<MenuChoice<T>>,
+    default: usize,
+    help: &str,
+) -> Result<T, String> {
+    Select::new(message, choices)
+        .with_starting_cursor(default)
+        .without_filtering()
+        .with_help_message(help)
+        .prompt()
+        .map(|choice| choice.value)
+        .map_err(prompt_error)
+}
+
+fn prompt_error(error: InquireError) -> String {
+    match error {
+        InquireError::OperationCanceled | InquireError::OperationInterrupted => {
+            "init: setup cancelled; no changes were made".to_string()
+        }
+        InquireError::NotTTY => {
+            "init: interactive setup requires a terminal; use --no-input".to_string()
+        }
+        error => format!("init: interactive setup failed: {error}"),
+    }
 }
 
 fn inspect_repository(paths: &AppPaths) -> Result<RepositoryState, String> {
@@ -290,10 +376,10 @@ fn inspect_repository(paths: &AppPaths) -> Result<RepositoryState, String> {
     }
     let remotes = git_text(&paths.source_home, &["remote"])?;
     let existing = if remotes.lines().any(|remote| remote == "origin") {
-        Some(git_text(
-            &paths.source_home,
-            &["remote", "get-url", "origin"],
-        )?)
+        let existing = git_text(&paths.source_home, &["remote", "get-url", "origin"])?;
+        validate_remote(&existing)
+            .map_err(|_| "init: existing Git origin contains an unsafe value".to_string())?;
+        Some(existing)
     } else {
         None
     };
@@ -497,7 +583,7 @@ mod tests {
     use std::fs;
     use std::process::Command;
 
-    use super::{parse, run, validate_remote};
+    use super::{RemoteMenuAction, parse, prompt_error, remote_menu_choices, run, validate_remote};
     use crate::config::Settings;
     use crate::i18n::{I18n, Locale};
     use crate::paths::AppPaths;
@@ -536,6 +622,42 @@ mod tests {
         .map(OsString::from);
         let error = parse(&conflicting).expect_err("remote choices must be exclusive");
         assert!(error.contains("cannot be used together"));
+    }
+
+    #[test]
+    fn builds_remote_menus_for_initial_setup_and_reconfiguration() {
+        let i18n = I18n::new(Locale::En).expect("catalog should load");
+        let initial = remote_menu_choices(&i18n, None, false)
+            .into_iter()
+            .map(|choice| choice.value)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            initial,
+            vec![RemoteMenuAction::Keep, RemoteMenuAction::Change]
+        );
+
+        let reconfigure = remote_menu_choices(&i18n, Some("existing.git"), true)
+            .into_iter()
+            .map(|choice| choice.value)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            reconfigure,
+            vec![
+                RemoteMenuAction::Keep,
+                RemoteMenuAction::Change,
+                RemoteMenuAction::Remove,
+            ]
+        );
+    }
+
+    #[test]
+    fn maps_terminal_cancellation_to_a_no_change_error() {
+        let cancelled = prompt_error(inquire::InquireError::OperationCanceled);
+        assert!(cancelled.contains("cancelled"));
+        assert!(cancelled.contains("no changes were made"));
+
+        let not_tty = prompt_error(inquire::InquireError::NotTTY);
+        assert!(not_tty.contains("use --no-input"));
     }
 
     #[test]

@@ -130,3 +130,8 @@ may explicitly replace or remove `origin`, and repairs missing `.git` metadata. 
 operation remains local: it does not contact a remote, create a commit, push, or
 modify activation state. Reconfiguration dry-run reports the complete plan without
 changing source, Git configuration, or machine-local preferences.
+
+When stdin is a TTY, initial setup and reconfiguration use arrow-key selections for
+finite choices and a text prompt only for a new origin. Esc or Ctrl+C exits before
+the apply phase, so partially answered setup never changes storage. Non-TTY and
+`--no-input` behavior remains option-driven and does not initialize a terminal UI.

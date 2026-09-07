@@ -261,9 +261,12 @@ SCV provides these variables at execution time:
   runs never trigger setup as a side effect.
 - Setup selects the embedded `en` or `ko` locale, a default `codex`, `claude`, or
   `agy` create adapter, and an optional Git `origin`.
+- Interactive setup uses arrow-key selection and Enter for locale, agent, and Git
+  origin actions. It requests free-form text only for a new origin. Esc or Ctrl+C
+  cancels the workflow before source, Git configuration, or preferences change.
 - `scv init --reconfigure` reruns the explicit setup workflow while preserving the
-  source manifest and command packages. Current values are interactive defaults;
-  blank Git input keeps `origin`, a new URL replaces it, and `-` removes it.
+  source manifest and command packages. Current values are the initially selected
+  choices; origin actions explicitly keep, replace, or remove it.
 - Non-interactive reconfiguration uses explicit `--locale`, `--agent`, and
   `--remote`; omitted values keep their current settings, while `--no-remote`
   removes `origin`. `--remote` and `--no-remote` are mutually exclusive.

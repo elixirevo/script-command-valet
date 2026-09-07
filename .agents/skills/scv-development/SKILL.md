@@ -73,7 +73,8 @@ layout, security boundaries, or external side effects.
 - Keep first-run setup equivalent to the explicit `scv init` builtin. It may run
   implicitly only for an argument-free TTY session and must not contact a remote,
   commit, push, or overwrite an existing Git origin. Explicit reconfiguration must
-  preserve source commands and change or remove `origin` only when selected.
+  preserve source commands, change or remove `origin` only when selected, and leave
+  source, Git, and preferences unchanged when the interactive selector is cancelled.
 - Keep generated-package localization explicit: `--locale` on persistent or
   one-shot generation overrides `ui.locale`, applies only to free-form user-facing
   text, and stores one authored language without translating identifiers or existing

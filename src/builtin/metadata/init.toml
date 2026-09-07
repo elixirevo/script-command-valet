@@ -58,6 +58,9 @@ text = "Running scv without arguments starts init only when setup is missing and
 [[notes]]
 text = "Reconfiguration preserves the existing source manifest and command packages."
 
+[[notes]]
+text = "Interactive setup uses arrow-key selections; Esc or Ctrl+C cancels before any change."
+
 [[examples]]
 command = "scv init"
 

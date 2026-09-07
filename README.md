@@ -32,9 +32,11 @@ scv init --reconfigure
 ```
 
 Reconfiguration uses the current locale, agent, and Git origin as defaults. Enter a
-new origin to replace it, enter `-` in the interactive prompt to remove it, or use
-`--no-remote` for the equivalent non-interactive operation. Existing `scv.toml` and
-command packages are preserved, and missing local Git metadata is repaired.
+new origin to replace it or select removal; use `--no-remote` for the equivalent
+non-interactive operation. Interactive setup uses arrow keys and Enter for language,
+agent, and origin actions, and prompts for text only when a new origin is selected.
+Esc or Ctrl+C cancels before any change. Existing `scv.toml` and command packages
+are preserved, and missing local Git metadata is repaired.
 
 ## Architecture
 
