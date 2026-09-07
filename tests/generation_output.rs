@@ -111,6 +111,22 @@ cp -R "$SCV_TEST_ROOT/fixture" generated/quiet-command
         assert!(prompt.contains("<scv-user-request>"));
         assert!(prompt.contains("Show the approved result"));
     }
+
+    fn use_directory_size_example(&self) {
+        let guide = include_str!("../assets/generation/prompts/one-shot.md");
+        let (_, example) = guide.split_once("```bash\n").unwrap();
+        let (source, _) = example.split_once("```").unwrap();
+        fs::write(self.root.join("fixture/main.sh"), source).unwrap();
+        let metadata_path = self.root.join("fixture/metadata.toml");
+        let metadata = fs::read_to_string(&metadata_path)
+            .unwrap()
+            .replace("Show the approved result", "Show directory disk usage")
+            .replace(
+                "prints the approved result",
+                "reads directory disk usage and prints sizes in ascending order",
+            );
+        fs::write(metadata_path, metadata).unwrap();
+    }
 }
 
 impl Drop for Fixture {
@@ -270,4 +286,78 @@ fn progress_uses_the_ui_locale_independently_of_the_generated_package_locale() {
         let prompt = fs::read_to_string(fixture.root.join("prompt")).unwrap();
         assert!(prompt.contains("human-facing text in English (en)"));
     }
+}
+
+#[test]
+fn embedded_native_example_handles_empty_and_unusual_directory_names_after_approval() {
+    for has_directories in [false, true] {
+        let fixture = Fixture::new();
+        fixture.use_directory_size_example();
+        let caller = fixture.root.join("caller");
+        fs::write(caller.join("ordinary-file"), b"not a directory").unwrap();
+        fs::create_dir(caller.join(".hidden-directory")).unwrap();
+        if has_directories {
+            for (name, size) in [("-small folder", 8192), ("large folder", 131072)] {
+                fs::create_dir(caller.join(name)).unwrap();
+                fs::write(caller.join(name).join("payload"), vec![b'x'; size]).unwrap();
+            }
+        }
+        let output = fixture
+            .command(false, "codex")
+            .args(["--yes", "--no-input"])
+            .output()
+            .unwrap();
+        let (stdout, stderr) = visible_output(&output);
+        assert!(output.status.success(), "{stderr}");
+        let (_, result) = stdout
+            .split_once("Running in the current working directory...\n")
+            .unwrap();
+        if has_directories {
+            let paths = result
+                .lines()
+                .map(|line| line.split_once('\t').unwrap().1)
+                .collect::<Vec<_>>();
+            assert_eq!(paths, ["./-small folder/", "./large folder/"]);
+        } else {
+            assert!(result.is_empty(), "{result}");
+        }
+        assert!(!fixture.root.join("source").exists());
+        let stored = fs::read_dir(fixture.root.join("data/history"))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path()
+            .join("package/quiet-command/main.sh");
+        assert_eq!(
+            fs::read_to_string(stored).unwrap(),
+            fs::read_to_string(fixture.root.join("fixture/main.sh")).unwrap()
+        );
+        fixture.assert_workspace_cleaned();
+    }
+}
+
+#[test]
+fn embedded_native_example_preserves_utility_errors_and_pipeline_failure() {
+    let fixture = Fixture::new();
+    fixture.use_directory_size_example();
+    fs::create_dir(fixture.root.join("caller/folder")).unwrap();
+    let utility = fixture.root.join("agents/du");
+    fs::write(
+        &utility,
+        "#!/bin/sh\nprintf 'UTILITY_FAILURE\\n%s\\n' \"$SCV_COMMAND_PACKAGE_DIR\" >&2\nexit 17\n",
+    )
+    .unwrap();
+    fs::set_permissions(utility, fs::Permissions::from_mode(0o700)).unwrap();
+    let output = fixture
+        .command(false, "codex")
+        .args(["--yes", "--no-input", "--locale", "ko"])
+        .output()
+        .unwrap();
+    let (_, stderr) = visible_output(&output);
+    assert_eq!(output.status.code(), Some(17), "{stderr}");
+    assert_eq!(stderr.matches("UTILITY_FAILURE").count(), 1);
+    assert!(stderr.contains(fixture.root.join("data/history").to_str().unwrap()));
+    assert!(stderr.contains("/package/quiet-command"));
+    fixture.assert_workspace_cleaned();
 }

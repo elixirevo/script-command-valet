@@ -5,9 +5,5 @@ set -euo pipefail
 # Accept no command-line input and do not prompt.
 # Resolve relative paths from the process current working directory.
 # Keep the package self-contained and never embed credentials or absolute user paths.
-
-main() {
-    :
-}
-
-main
+# Prefer available system tools; keep necessary quoting and failure propagation.
+# Write the required commands directly; add functions only when needed.

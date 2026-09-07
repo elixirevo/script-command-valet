@@ -203,6 +203,13 @@ before asking for approval to run a one-shot command or install a persistent one
 Progress uses `ui.locale` and stderr; redirected logs contain plain stage lines.
 After execution approval, the command's own output appears normally.
 
+Both modes instruct the agent to prefer available system tools and the smallest
+correct implementation. A directory disk-usage request should use `du` and `sort`
+with necessary path handling; Python or Node.js is appropriate when it simplifies
+structured data or complex logic. One-shot templates omit mandatory `main` wrappers
+and target the current platform. This guides generation without imposing a line
+limit or changing the selected model.
+
 Generate, inspect, save, and immediately run a one-shot command:
 
 ```bash
@@ -242,6 +249,8 @@ source, and creates a new activation.
 Generated descriptions, effects, argument/option help, notes, and runtime messages
 use `--locale`, or `ui.locale` when omitted. Each user package stores that one
 authored language; changing the UI locale later does not rewrite existing commands.
+External utilities retain their native output and diagnostics; the agent must not
+rebuild a utility just to translate its messages.
 See [create architecture](docs/CREATE_ARCHITECTURE.md) for adapter and validation
 boundaries.
 

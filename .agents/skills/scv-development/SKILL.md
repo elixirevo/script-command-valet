@@ -60,6 +60,10 @@ layout, security boundaries, or external side effects.
   contract. Materialize only that mode's metadata and source templates; never expose
   persistent argument, help, interaction, or dry-run scaffolding to one-shot
   generation.
+- Follow the guide's implementation-choice rules in both modes: prefer available
+  system utilities, retain necessary correctness handling, and avoid mandatory
+  function scaffolding in one-shot templates. Localize authored messages without
+  rebuilding external utilities to translate their output.
 - Keep generation transcripts hidden at the adapter process boundary. Use SCV-owned
   localized stage progress and a terminal-only spinner; stop it before the validated
   summary and explicit installation or execution consent. Keep approved command

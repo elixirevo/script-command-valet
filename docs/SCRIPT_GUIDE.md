@@ -170,6 +170,9 @@ Do not mix progress messages or explanatory text into JSON stdout.
   `ui.locale` later does not translate an existing user command or history package.
 - Generated localization never translates schema keys, enum values, identifiers,
   command or option names, usage syntax, file names, or required protocol literals.
+- Output and diagnostics from external utilities retain their native language.
+  Do not reimplement or wrap a utility solely to translate its output; localize
+  package-authored messages instead.
 - `scv list --json`, `scv info <command> --json`, and other JSON contracts remain
   locale-independent. In particular, builtin metadata serialized as JSON remains
   the canonical English metadata.
@@ -230,6 +233,21 @@ system approval remain separate behavioral contracts.
 
 ## 8. Language-specific source rules
 
+- Prefer the smallest clear implementation that satisfies the request. Reuse
+  available system utilities when their behavior matches; do not recreate directory
+  traversal, disk-usage measurement, size formatting, or sorting already provided by
+  those utilities. Use Python or Node.js when structured data or complex logic makes
+  them simpler and more accurate than a shell pipeline.
+- Preserve requested semantics, including files versus directories, hidden entries,
+  disk usage versus apparent size, and ordering. Keep necessary path quoting,
+  empty-input handling, and failure propagation. Simplicity does not justify hiding
+  errors or dropping requested behavior.
+- Add functions, classes, configuration, and platform fallbacks only when the task
+  needs them. A short straight-line script does not need a `main` wrapper.
+- Self-contained packages may call standard OS utilities and their declared runtime.
+  Package authored resources, choose utilities and flags supported on every declared
+  platform, and do not assume optional tools are installed. Do not add dependency
+  installation to a task that can use existing tools.
 - Manage the source starting points used by agent-powered generation under
   `assets/generation/templates/` and materialize them into the temporary generation
   workspace.
@@ -325,7 +343,10 @@ confirmed execution and machine-local history.
   guidance must not appear in a one-shot prompt.
 - Materialize only the selected mode's metadata and source templates under the
   workspace `templates/` names. One-shot templates use exact zero-input usage and do
-  not contain persistent help or interaction scaffolding.
+  not contain persistent help, interaction, or mandatory function scaffolding.
+- Apply the implementation-choice rules in section 8 to both generation modes.
+  One-shot generation targets the current platform without speculative extra
+  implementations. Shared metadata guidance must not prescribe a runtime by example.
 - SCV injects the prompt explicitly and does not depend on provider file discovery.
 - Both generation modes hide provider stdout and stderr, including failure
   transcripts. Show SCV-owned preparation, generation, validation, and approval

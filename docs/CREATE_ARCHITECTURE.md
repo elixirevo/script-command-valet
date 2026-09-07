@@ -120,6 +120,31 @@ install, while one-shot mode asks to save to history and execute. No spinner run
 during consent or execution. The executed command's own stdout and stderr remain
 visible after approval. `--yes` and `--no-input` keep their existing semantics.
 
+## Implementation choice
+
+Both modes share a system-tool-first authoring policy. For operations already
+provided by available utilities, generate a short command or pipeline with necessary
+quoting, empty-input handling, and error propagation. When utilities meet the request,
+reuse their traversal, disk-usage measurement, size formatting, and sorting.
+Python and Node.js remain appropriate when they simplify structured data processing
+or complex logic. The actual request determines file selection, size semantics, and
+ordering; short code must still be correct.
+
+Self-contained packages may use standard OS utilities and their declared runtime.
+They must bundle authored resources, use compatible utilities and flags, and cannot
+assume optional dependencies. The shared metadata contract lists required fields
+without a runtime-specific sample. One-shot templates omit mandatory `main`
+wrappers, and their mode prompt includes a short native-tool example. One-shot
+generation targets the current platform without speculative extra implementations.
+
+These are authoring instructions, not a code-length validator or a change to model
+selection. Evaluate generated results by correctness, utility choice, unnecessary
+custom logic, and elapsed generation time. Useful cases include directory disk usage
+(native utilities), empty directories and unusual path names (correct handling), and
+JSON transformation (a real parser rather than fragile shell text substitution).
+Fixture tests verify the embedded example through validation, history storage, and
+approved execution; they do not measure a live model's adherence or latency.
+
 ## Generated package language
 
 `scv create --locale <en|ko>` and the equivalent one-shot option select the single
@@ -134,6 +159,11 @@ identifiers, command/category/argument/option names, usage and example syntax, f
 names, runtime/platform/risk tokens, and required protocol literals stay canonical.
 The package does not contain parallel translations, and changing `ui.locale` later
 does not rewrite or dynamically translate an installed user command.
+
+External utility output and diagnostics retain their native language. Generated
+code must not reimplement or wrap a utility solely to translate it; only
+package-authored messages follow the selected locale, and utility failures remain
+visible.
 
 ## Configuration and adapter contract
 
@@ -166,14 +196,14 @@ and rejects the other levels before starting. Codex provider-specific settings u
 sandbox, approval, and network boundaries. SCV does not invent mappings for portable
 effort or generic options when a provider does not support them.
 
-The shared prompt owns workspace confinement, package shape, runtimes, localization,
-safety metadata, and non-executing completion checks. The persistent contract alone
-owns arguments, options, metadata-rendered help, interactive automation, and dry-run
-rules. The one-shot contract instead requires exact zero-input usage, no arguments or
-options, no prompts, current-platform support, and current-working-directory path
-resolution. SCV injects the concrete current platform into that mode context. The
-one-shot validator enforces exact usage and examples in addition to the structural
-package checks.
+The shared prompt owns workspace confinement, implementation choice, package shape,
+runtimes, localization, safety metadata, and non-executing completion checks. The
+persistent contract alone owns arguments, options, metadata-rendered help,
+interactive automation, and dry-run rules. The one-shot contract instead requires
+exact zero-input usage, no arguments or options, no prompts, current-platform support,
+and current-working-directory path resolution. SCV injects the concrete current
+platform into that mode context. The one-shot validator enforces exact usage and
+examples in addition to the structural package checks.
 
 The Codex adapter disables user configuration and execpolicy rules, sets the project
 instruction byte limit to zero, and sends the composed prompt over stdin. The Claude

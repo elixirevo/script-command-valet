@@ -84,6 +84,9 @@ text = "Generated packages store one authored language; changing ui.locale later
 [[notes]]
 text = "Code generation logs are hidden behind stage progress. Review the validated command summary before approving installation."
 
+[[notes]]
+text = "Generation prefers available system tools and minimal implementations. External utilities retain their native output language."
+
 [[examples]]
 command = "scv create \"Show directory sizes in descending order\""
 

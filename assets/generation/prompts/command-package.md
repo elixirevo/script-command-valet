@@ -4,6 +4,29 @@ This document is the shared authoring contract for packages created by SCV's
 persistent and one-shot generation modes. Exactly one injected mode contract adds
 the remaining lifecycle and invocation requirements.
 
+## Implementation choice
+
+- Choose the smallest clear implementation that correctly satisfies the request.
+- Prefer available system utilities over custom code when their behavior matches.
+  On Linux/macOS, a short Bash command or pipeline is often sufficient. Use native
+  tools on Windows; never assume Bash is installed there.
+- When those utilities meet the request, reuse their directory traversal, disk-usage
+  measurement (`du`), human-readable sizes, and ordering (`sort`) instead of writing
+  those features in Python or Node.js.
+  Choose Python or Node.js when structured data or complex logic is simpler and
+  more accurate there; do not force such tasks into brittle shell text processing.
+- Preserve the requested semantics: files versus directories, hidden entries,
+  disk usage versus apparent size, and ordering. Keep necessary path quoting,
+  empty-input handling, and failure propagation; never hide errors to shorten code.
+- Add functions, classes, configuration, and platform fallbacks only when needed.
+  Short straight-line scripts do not need a `main` wrapper. Templates are starting
+  points, not a requirement to retain unused scaffolding.
+- Self-contained means package-owned source and resources travel with the package;
+  standard OS utilities and the declared runtime are allowed. Use only utilities
+  and flags supported on the declared platforms. Do not assume optional tools such
+  as `jq` are installed or add dependency installation for a task existing tools
+  can perform.
+
 ## Package shape and names
 
 ```text
@@ -23,31 +46,11 @@ generated/<command>/
 
 ## Required metadata
 
-Start from `templates/command.toml`. A generated external command uses this shape:
-
-```toml
-name = "path-size"
-category = "filesystem"
-description = "Show the size of a path."
-usage = "scv path-size"
-builtin = false
-risk = "read"
-network = false
-supports_dry_run = false
-effects = ["reads local path metadata", "prints path sizes"]
-
-[[implementations]]
-runtime = "python"
-platforms = ["linux", "macos", "windows"]
-entry = "main.py"
-
-[[examples]]
-command = "scv path-size"
-```
-
-All top-level fields shown above are required. `network` and `supports_dry_run` are
-unquoted TOML booleans, `true` or `false`; they are never strings. `effects` contains
-one or more concrete observable effects.
+Start from the mode-specific `templates/command.toml`. Required top-level fields
+are `name`, `category`, `description`, `usage`, `builtin`, `risk`, `network`,
+`supports_dry_run`, and `effects`. Choose the runtime to fit the task, not a sample.
+`network` and `supports_dry_run` are unquoted TOML booleans, `true` or `false`;
+they are never strings. `effects` contains one or more concrete observable effects.
 
 `builtin` is always `false`. Generated packages never use builtin metadata fields.
 
@@ -65,6 +68,10 @@ Keep schema keys and enum values, command/category/argument/option names, usage 
 example syntax, file names, and runtime/platform/risk tokens in their canonical
 form. Do not create parallel locale files or multiple translations in one package.
 The generated package stores the single selected language as authored text.
+
+External utilities' output and diagnostics keep their native language. Do not
+reimplement or wrap a utility solely to translate its output. Localize only
+package-authored messages and preserve utility failures.
 
 ### Implementations
 

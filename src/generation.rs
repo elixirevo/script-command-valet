@@ -271,6 +271,38 @@ mod tests {
     }
 
     #[test]
+    fn minimal_one_shot_templates_pass_non_executing_package_validation() {
+        for (runtime, entry) in [
+            ("bash", "command.sh"),
+            ("node", "command.js"),
+            ("python", "command.py"),
+            ("pwsh", "command.ps1"),
+        ] {
+            let workspace = GenerationWorkspace::create(GenerationMode::OneShot).unwrap();
+            let package = workspace.root().join("generated/sample-command");
+            std::fs::create_dir(&package).unwrap();
+            let metadata = ONE_SHOT_TEMPLATE
+                .replace("__COMMAND__", "sample-command")
+                .replace("__DESCRIPTION__", "Minimal template syntax fixture")
+                .replace("__RISK__", "read")
+                .replace("__NETWORK__", "false")
+                .replace("__EFFECT__", "No runtime action in this syntax fixture")
+                .replace("__RUNTIME__", runtime)
+                .replace("__PLATFORM__", crate::command::current_platform())
+                .replace("__ENTRY__", entry);
+            std::fs::write(package.join("metadata.toml"), metadata).unwrap();
+            std::fs::copy(
+                workspace.root().join("templates").join(entry),
+                package.join(entry),
+            )
+            .unwrap();
+            let validated = crate::package::validate_one_shot(&package)
+                .unwrap_or_else(|error| panic!("{runtime}: {error}"));
+            assert_eq!(validated.files.len(), 2);
+        }
+    }
+
+    #[test]
     fn prompt_keeps_the_request_inside_explicit_boundaries() {
         let prompt = build_prompt(
             "make a tool",

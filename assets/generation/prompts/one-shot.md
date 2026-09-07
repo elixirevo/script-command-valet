@@ -12,8 +12,8 @@ never execute or import the implementation during generation.
 - Declare no `[[arguments]]` and no `[[options]]` entries.
 - Set `supports_dry_run = false`.
 - If `[[examples]]` is present, every example is exactly `scv <generated-name>`.
-- Provide an implementation for the current platform. Additional implementations
-  are allowed only when they are complete and truthful; they are not required.
+- Target the current platform; do not add speculative extra implementations.
+  Additional platforms are allowed when requested and fully supported.
 - Perform the complete requested behavior with no command-line input and no prompts.
 - Resolve relative paths from the process current working directory. Never hardcode
   or depend on the generation workspace path.
@@ -21,6 +21,25 @@ never execute or import the implementation during generation.
   options, or placeholder input. SCV owns approval and invocation for this mode.
 - Do not assume the package will enter the Git-backed command source or an
   activation. Package resources must still be self-contained for history replay.
+
+## Minimal implementation example
+
+For a Linux/macOS request to show disk usage of non-hidden subdirectories in the
+current directory, ordered from smallest to largest, use system tools directly:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+shopt -s nullglob
+
+folders=(./*/)
+((${#folders[@]})) || exit 0
+du -sh "${folders[@]}" | sort -h
+```
+
+This handles spaces, leading hyphens, and no matching directories without writing
+a recursive walker or size formatter. Adapt the behavior to the actual request;
+do not copy this example for tasks needing different semantics or platforms.
 
 ## One-shot completion checks
 
