@@ -1,6 +1,10 @@
 mod agy;
 mod claude;
 mod codex;
+mod usage;
+
+pub use usage::TokenUsage;
+use usage::{UsageFormat, read_usage};
 
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -55,20 +59,24 @@ pub trait AgentAdapter {
     fn validate_effort(&self, _effort: Option<Effort>) -> Result<(), String> {
         Ok(())
     }
-    fn generate(&self, request: &GenerateRequest<'_>) -> Result<(), String>;
+    fn generate(&self, request: &GenerateRequest<'_>) -> Result<Option<TokenUsage>, String>;
 }
 
-/// Provider transcripts can contain prompts, source, and tool output. Discard
-/// both streams at the process boundary, including on failure, without buffering
-/// unbounded output. SCV owns progress and the final approval preview.
-fn run_quietly(command: &mut Command, agent: &str, prompt: Option<&str>) -> Result<(), String> {
+/// Suppress provider transcripts while extracting only reported usage from bounded
+/// structured stdout events. Stderr is discarded, including on failure.
+fn run_quietly(
+    command: &mut Command,
+    agent: &str,
+    prompt: Option<&str>,
+    format: UsageFormat,
+) -> Result<Option<TokenUsage>, String> {
     command
         .stdin(if prompt.is_some() {
             Stdio::piped()
         } else {
             Stdio::null()
         })
-        .stdout(Stdio::null())
+        .stdout(Stdio::piped())
         .stderr(Stdio::null());
     let mut child = command.spawn().map_err(|error| {
         if error.kind() == std::io::ErrorKind::NotFound {
@@ -77,6 +85,23 @@ fn run_quietly(command: &mut Command, agent: &str, prompt: Option<&str>) -> Resu
             format!("could not start agent '{agent}': {error}")
         }
     })?;
+    let stdout = child
+        .stdout
+        .take()
+        .expect("stdout was configured as a pipe");
+    let reader = match std::thread::Builder::new()
+        .name("scv-agent-usage".to_string())
+        .spawn(move || read_usage(stdout, format))
+    {
+        Ok(reader) => reader,
+        Err(error) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(format!(
+                "could not read output from agent '{agent}': {error}"
+            ));
+        }
+    };
     if let Some(prompt) = prompt {
         // Taking and dropping stdin sends EOF even when the prompt is empty.
         let sent = child
@@ -91,19 +116,29 @@ fn run_quietly(command: &mut Command, agent: &str, prompt: Option<&str>) -> Resu
         if let Err(error) = sent {
             let _ = child.kill();
             let _ = child.wait();
+            let _ = reader.join();
             return Err(error);
         }
     }
-    let status = child
-        .wait()
-        .map_err(|error| format!("could not wait for agent '{agent}': {error}"))?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(format!(
+    let status = match child.wait() {
+        Ok(status) => status,
+        Err(error) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            let _ = reader.join();
+            return Err(format!("could not wait for agent '{agent}': {error}"));
+        }
+    };
+    let report = reader.join().ok().and_then(Result::ok).unwrap_or_default();
+    if !status.success() {
+        return Err(format!(
             "agent '{agent}' failed with status {status}. Check the agent's authentication and configuration"
-        ))
+        ));
     }
+    if report.failed {
+        return Err(format!("agent '{agent}' reported a failed generation"));
+    }
+    Ok(report.tokens)
 }
 
 pub fn adapter(name: &str) -> Result<Box<dyn AgentAdapter>, String> {

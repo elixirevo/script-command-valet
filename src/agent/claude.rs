@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use super::{AgentAdapter, GenerateRequest, run_quietly};
+use super::{AgentAdapter, GenerateRequest, TokenUsage, UsageFormat, run_quietly};
 
 pub struct ClaudeAdapter;
 
@@ -13,7 +13,7 @@ impl AgentAdapter for ClaudeAdapter {
         false
     }
 
-    fn generate(&self, request: &GenerateRequest<'_>) -> Result<(), String> {
+    fn generate(&self, request: &GenerateRequest<'_>) -> Result<Option<TokenUsage>, String> {
         if !request.options.is_empty() {
             return Err(
                 "agent 'claude' does not expose generic --agent-option translation; use --model or --effort"
@@ -24,6 +24,7 @@ impl AgentAdapter for ClaudeAdapter {
             &mut build_command(request),
             self.name(),
             Some(request.prompt),
+            UsageFormat::Claude,
         )
     }
 }
@@ -33,6 +34,7 @@ fn build_command(request: &GenerateRequest<'_>) -> Command {
     command
         .current_dir(request.workspace)
         .arg("--print")
+        .args(["--output-format", "stream-json", "--verbose"])
         .arg("--permission-mode")
         .arg("acceptEdits")
         .arg("--tools")
@@ -78,6 +80,11 @@ mod tests {
                 .any(|pair| pair == ["--tools", "Read,Write,Edit"])
         );
         assert!(args.contains(&"--safe-mode".to_string()));
+        assert!(
+            args.windows(2)
+                .any(|pair| pair == ["--output-format", "stream-json"])
+        );
+        assert!(args.contains(&"--verbose".to_string()));
         assert!(!args.contains(&"request".to_string()));
     }
 }

@@ -100,6 +100,7 @@ pub fn run(
         .validate_effort(effort)
         .map_err(|error| format!("create: {error}"))?;
 
+    let started = std::time::Instant::now();
     let preparing = GenerationProgress::start(1, i18n.text("generation.preparing"), i18n);
     let workspace = GenerationWorkspace::create(GenerationMode::Persistent)?;
     let reserved_names = registry
@@ -119,7 +120,7 @@ pub fn run(
         &i18n.format("generation.generating", &[("agent", adapter.name())]),
         i18n,
     );
-    adapter
+    let usage = adapter
         .generate(&GenerateRequest {
             workspace: workspace.root(),
             prompt: &prompt,
@@ -159,6 +160,7 @@ pub fn run(
     }
 
     validating.complete();
+    GenerationProgress::summary(started.elapsed(), usage, i18n);
     GenerationProgress::approval(i18n.text("generation.install_approval"));
     print_preview(&validated, i18n);
     if !options.yes && !confirm(i18n)? {

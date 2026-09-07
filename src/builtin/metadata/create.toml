@@ -87,6 +87,9 @@ text = "Code generation logs are hidden behind stage progress. Review the valida
 [[notes]]
 text = "Generation prefers available system tools and minimal implementations. External utilities retain their native output language."
 
+[[notes]]
+text = "Before approval, SCV shows elapsed generation time and CLI-reported token usage. Time includes preparation and validation; missing usage is shown as unavailable."
+
 [[examples]]
 command = "scv create \"Show directory sizes in descending order\""
 

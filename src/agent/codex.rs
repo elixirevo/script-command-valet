@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use super::{AgentAdapter, GenerateRequest, run_quietly};
+use super::{AgentAdapter, GenerateRequest, TokenUsage, UsageFormat, run_quietly};
 
 pub struct CodexAdapter;
 
@@ -13,11 +13,12 @@ impl AgentAdapter for CodexAdapter {
         true
     }
 
-    fn generate(&self, request: &GenerateRequest<'_>) -> Result<(), String> {
+    fn generate(&self, request: &GenerateRequest<'_>) -> Result<Option<TokenUsage>, String> {
         run_quietly(
             &mut build_command(request),
             self.name(),
             Some(request.prompt),
+            UsageFormat::Codex,
         )
     }
 }
@@ -26,6 +27,7 @@ fn build_command(request: &GenerateRequest<'_>) -> Command {
     let mut command = Command::new("codex");
     command
         .arg("exec")
+        .arg("--json")
         .arg("--cd")
         .arg(request.workspace)
         .arg("--sandbox")
@@ -81,6 +83,7 @@ mod tests {
         assert!(args.contains(&"model_reasoning_effort=\"high\"".to_string()));
         assert!(args.contains(&"model_verbosity_level=low".to_string()));
         assert!(args.contains(&"--ignore-user-config".to_string()));
+        assert!(args.contains(&"--json".to_string()));
         assert!(args.contains(&"--ignore-rules".to_string()));
         assert!(args.contains(&"project_doc_max_bytes=0".to_string()));
     }

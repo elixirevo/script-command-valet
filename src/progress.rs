@@ -3,6 +3,7 @@ use std::sync::mpsc::{self, Sender};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+use crate::agent::TokenUsage;
 use crate::i18n::I18n;
 
 const FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -64,6 +65,10 @@ impl<'a> GenerationProgress<'a> {
         write_line(&format!("[4/4] {message}"));
     }
 
+    pub fn summary(elapsed: Duration, usage: Option<TokenUsage>, i18n: &I18n) {
+        write_line(&format_summary(elapsed, usage, i18n));
+    }
+
     fn finish(&mut self, success: bool) {
         if self.finished {
             return;
@@ -85,6 +90,39 @@ impl<'a> GenerationProgress<'a> {
     }
 }
 
+fn format_summary(elapsed: Duration, usage: Option<TokenUsage>, i18n: &I18n) -> String {
+    let tokens = match usage {
+        Some(usage) => i18n.format(
+            "generation.tokens",
+            &[
+                ("total", &group_digits(usage.total)),
+                ("input", &group_digits(usage.input)),
+                ("output", &group_digits(usage.output)),
+            ],
+        ),
+        None => i18n.text("generation.tokens_unavailable").to_string(),
+    };
+    i18n.format(
+        "generation.summary",
+        &[
+            ("seconds", &format!("{:.1}", elapsed.as_secs_f64())),
+            ("tokens", &tokens),
+        ],
+    )
+}
+
+fn group_digits(value: u64) -> String {
+    let digits = value.to_string();
+    let mut grouped = String::new();
+    for (index, digit) in digits.chars().enumerate() {
+        if index > 0 && (digits.len() - index).is_multiple_of(3) {
+            grouped.push(',');
+        }
+        grouped.push(digit);
+    }
+    grouped
+}
+
 impl Drop for GenerationProgress<'_> {
     fn drop(&mut self) {
         self.finish(false);
@@ -104,4 +142,45 @@ fn write_frame(marker: &str, label: &str, newline: bool) {
 
 fn write_line(message: &str) {
     let _ = writeln!(io::stderr().lock(), "{message}");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_summary;
+    use crate::agent::TokenUsage;
+    use crate::i18n::{I18n, Locale};
+    use std::time::Duration;
+
+    #[test]
+    fn formats_elapsed_time_and_distinguishes_zero_from_unknown_usage() {
+        let elapsed = Duration::from_millis(12345);
+        let en = I18n::new(Locale::En).unwrap();
+        let ko = I18n::new(Locale::Ko).unwrap();
+        let usage = Some(TokenUsage {
+            input: 12000,
+            output: 800,
+            total: 12800,
+        });
+        assert_eq!(
+            format_summary(elapsed, usage, &en),
+            "Generation complete · 12.3s · Tokens 12,800 (input 12,000 / output 800)"
+        );
+        assert_eq!(
+            format_summary(elapsed, usage, &ko),
+            "생성 완료 · 12.3초 · 토큰 12,800 (입력 12,000 / 출력 800)"
+        );
+        assert!(format_summary(elapsed, None, &ko).ends_with("토큰 사용량 확인 불가"));
+        assert!(
+            format_summary(
+                elapsed,
+                Some(TokenUsage {
+                    input: 0,
+                    output: 0,
+                    total: 0
+                }),
+                &en
+            )
+            .ends_with("Tokens 0 (input 0 / output 0)")
+        );
+    }
 }

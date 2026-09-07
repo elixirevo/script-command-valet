@@ -203,6 +203,13 @@ before asking for approval to run a one-shot command or install a persistent one
 Progress uses `ui.locale` and stderr; redirected logs contain plain stage lines.
 After execution approval, the command's own output appears normally.
 
+Before approval, both modes show generation time and CLI-reported token usage, for
+example `Generation complete · 12.3s · Tokens 12,800 (input 12,000 / output 800)`.
+Time covers preparation, generation, and validation; it excludes waiting for approval
+and executing the command. Codex, Claude, and Agy usage is read from their completion
+events, including cached input without counting it twice. Unreported usage appears
+as unavailable. This summary follows `ui.locale` and stays on stderr with progress.
+
 Both modes instruct the agent to prefer available system tools and the smallest
 correct implementation. A directory disk-usage request should use `du` and `sort`
 with necessary path handling; Python or Node.js is appropriate when it simplifies

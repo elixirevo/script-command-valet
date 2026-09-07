@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use super::{AgentAdapter, Effort, GenerateRequest, run_quietly};
+use super::{AgentAdapter, Effort, GenerateRequest, TokenUsage, UsageFormat, run_quietly};
 
 pub struct AgyAdapter;
 
@@ -17,9 +17,14 @@ impl AgentAdapter for AgyAdapter {
         validate_effort(effort)
     }
 
-    fn generate(&self, request: &GenerateRequest<'_>) -> Result<(), String> {
+    fn generate(&self, request: &GenerateRequest<'_>) -> Result<Option<TokenUsage>, String> {
         validate_request(request)?;
-        run_quietly(&mut build_command(request), self.name(), None)
+        run_quietly(
+            &mut build_command(request),
+            self.name(),
+            None,
+            UsageFormat::Agy,
+        )
     }
 }
 
@@ -48,6 +53,7 @@ fn build_command(request: &GenerateRequest<'_>) -> Command {
     command
         .current_dir(request.workspace)
         .arg("--print")
+        .args(["--output-format", "stream-json"])
         .arg("--mode")
         .arg("accept-edits")
         .arg("--sandbox")
@@ -98,6 +104,10 @@ mod tests {
                 .any(|pair| pair == ["--mode", "accept-edits"])
         );
         assert!(args.contains(&"--sandbox".to_string()));
+        assert!(
+            args.windows(2)
+                .any(|pair| pair == ["--output-format", "stream-json"])
+        );
         assert!(args.contains(&"--disable-slash-commands".to_string()));
         assert!(!args.contains(&"--dangerously-skip-permissions".to_string()));
         assert_eq!(args.last().map(String::as_str), Some("request"));

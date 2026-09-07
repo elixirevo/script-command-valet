@@ -354,6 +354,13 @@ confirmed execution and machine-local history.
   stages in `ui.locale` on stderr. Animate a spinner only on a capable terminal;
   redirected output and `TERM=dumb` receive plain stage lines. Stop the spinner
   before displaying errors, the validated summary, or the consent prompt.
+- After successful generation and validation, show elapsed time and reported input,
+  output, and total tokens on stderr in `ui.locale`. Measure from workspace
+  preparation through validation with a monotonic clock; exclude approval waiting,
+  installation, history storage, and command execution. Do not estimate missing
+  usage or present it as zero. Parse bounded provider completion events without
+  displaying or persisting transcripts, and never double-count cached or reasoning
+  tokens already included in a provider's totals.
 - Approval previews retain the command description, risk, network use, and effects.
   Use a short review reminder and execution question for one-shot consent.
   One-shot execution output is visible after consent; persistent creation asks for

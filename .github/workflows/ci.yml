@@ -20,7 +20,7 @@ jobs:
           components: rustfmt, clippy
 
       - run: cargo fmt --check
-      - name: Test core and embedded generation contracts
+      - name: Test core, generation statistics, and embedded contracts
         run: cargo test --locked
       - run: cargo clippy --locked --all-targets --all-features -- -D warnings
       - name: Build debug binary

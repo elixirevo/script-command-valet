@@ -74,6 +74,30 @@ esac
 pwd > "$SCV_TEST_ROOT/workspace"
 if [ "${SCV_TEST_FAIL:-0}" = 1 ]; then exit 17; fi
 cp -R "$SCV_TEST_ROOT/fixture" generated/quiet-command
+if [ "${SCV_TEST_MISSING_USAGE:-0}" = 1 ]; then exit 0; fi
+case "$0" in
+    */codex)
+        if [ "${SCV_TEST_RESULT_ERROR:-0}" = 1 ]; then
+            printf '%s\n' '{"type":"turn.failed","error":{"message":"HIDDEN_FAILURE"}}'
+        else
+            printf '%s\n' '{"type":"turn.completed","usage":{"input_tokens":12000,"cached_input_tokens":10000,"output_tokens":800}}'
+        fi
+        ;;
+    */claude)
+        if [ "${SCV_TEST_RESULT_ERROR:-0}" = 1 ]; then
+            printf '%s\n' '{"type":"result","is_error":true,"result":"HIDDEN_FAILURE"}'
+        else
+            printf '%s\n' '{"type":"result","is_error":false,"result":"HIDDEN_RESPONSE","usage":{"input_tokens":1000,"cache_read_input_tokens":9000,"cache_creation_input_tokens":2000,"output_tokens":800}}'
+        fi
+        ;;
+    */agy)
+        if [ "${SCV_TEST_RESULT_ERROR:-0}" = 1 ]; then
+            printf '%s\n' '{"event":"result","result":{"status":"ERROR","error":"HIDDEN_FAILURE"}}'
+        else
+            printf '%s\n' '{"event":"result","result":{"status":"SUCCESS","response":"HIDDEN_RESPONSE","usage":{"input_tokens":12000,"cache_read_tokens":10000,"output_tokens":800,"thinking_tokens":300,"total_tokens":12800}}}'
+        fi
+        ;;
+esac
 "#;
         for name in ["codex", "claude", "agy"] {
             let path = root.join("agents").join(name);
@@ -163,11 +187,19 @@ fn hides_all_provider_streams_but_preserves_progress_preview_and_approved_output
                 .unwrap();
             let (stdout, stderr) = visible_output(&output);
             assert!(output.status.success(), "{agent}: {stderr}");
-            let stages = stderr.lines().collect::<Vec<_>>();
+            let stages = stderr
+                .lines()
+                .filter(|line| line.starts_with('['))
+                .collect::<Vec<_>>();
             assert_eq!(stages.len(), 4, "{stderr}");
             for (index, line) in stages.iter().enumerate() {
                 assert!(line.starts_with(&format!("[{}/4]", index + 1)));
             }
+            assert_eq!(stderr.matches("Generation complete ·").count(), 1);
+            assert!(stderr.contains("Tokens 12,800 (input 12,000 / output 800)"));
+            assert!(stderr.find("[3/4]").unwrap() < stderr.find("Generation complete").unwrap());
+            assert!(stderr.find("Generation complete").unwrap() < stderr.find("[4/4]").unwrap());
+            assert!(!stdout.contains("Generation complete"));
             assert!(stdout.contains("Show the approved result"));
             assert!(stdout.contains("prints the approved result"));
             assert!(stdout.contains("risk"));
@@ -283,8 +315,54 @@ fn progress_uses_the_ui_locale_independently_of_the_generated_package_locale() {
         assert!(stderr.contains("[1/4] 요청 준비 중"));
         assert!(stderr.contains("[2/4] codex로 명령 생성 중"));
         assert!(stderr.contains("승인 준비 완료"));
+        assert!(stderr.contains("생성 완료 ·"));
+        assert!(stderr.contains("토큰 12,800 (입력 12,000 / 출력 800)"));
         let prompt = fs::read_to_string(fixture.root.join("prompt")).unwrap();
         assert!(prompt.contains("human-facing text in English (en)"));
+    }
+}
+
+#[test]
+fn missing_usage_is_explicit_and_does_not_block_generation() {
+    for agent in ["codex", "claude", "agy"] {
+        for persistent in [false, true] {
+            let fixture = Fixture::new();
+            let output = fixture
+                .command(persistent, agent)
+                .args(["--yes", "--no-input"])
+                .env("SCV_TEST_MISSING_USAGE", "1")
+                .output()
+                .unwrap();
+            let (_, stderr) = visible_output(&output);
+            assert!(output.status.success(), "{stderr}");
+            assert!(stderr.contains("Generation complete ·"));
+            assert!(stderr.contains("Tokens unavailable"));
+            fixture.assert_workspace_cleaned();
+        }
+    }
+}
+
+#[test]
+fn structured_failure_with_success_exit_never_reaches_approval() {
+    for agent in ["codex", "claude", "agy"] {
+        for persistent in [false, true] {
+            let fixture = Fixture::new();
+            let output = fixture
+                .command(persistent, agent)
+                .args(["--yes", "--no-input"])
+                .env("SCV_TEST_RESULT_ERROR", "1")
+                .output()
+                .unwrap();
+            let (stdout, stderr) = visible_output(&output);
+            assert!(!output.status.success());
+            assert!(stdout.is_empty());
+            assert!(stderr.contains("reported a failed generation"));
+            assert!(!stderr.contains("[3/4]"));
+            assert!(!stderr.contains("Generation complete"));
+            assert!(!fixture.root.join("source").exists());
+            assert!(!fixture.root.join("data").exists());
+            fixture.assert_workspace_cleaned();
+        }
     }
 }
 

@@ -66,6 +66,8 @@ new approval.
 
 - `src/agent/`: common requests and provider adapters. Codex, Claude, and Agy are
   supported.
+- `src/agent/usage.rs`: reads bounded provider events and normalizes reported token
+  totals while discarding all transcript text.
 - `src/generation.rs`: combines shared provider-neutral contracts with exactly one
   mode contract from `assets/generation/`, materializes only that mode's templates
   under stable workspace names, and removes the complete workspace on exit.
@@ -107,10 +109,13 @@ approval. Human progress follows `ui.locale`, independently of the package's
 files, and `TERM=dumb` get plain stage lines without animation or control sequences.
 The animation is stopped on success and on errors before any preview or prompt.
 
-All three adapters use the shared quiet process runner. Provider stdout and stderr
-are discarded at the process boundary, so prompts, source code, tool calls, and
-final agent responses do not appear in the terminal and cannot accumulate in memory.
-Failures report the provider and exit status without replaying its transcript.
+All three adapters use the shared quiet process runner. Provider stderr is discarded;
+a concurrent reader drains structured stdout before stdin delivery can block. It
+buffers at most one 1 MiB event, skips oversized lines through their newline, and
+retains only numeric usage and completion status. Prompts, source code, tool calls,
+and final responses never appear in the terminal or get persisted by SCV. Failures
+report the provider and exit status without replaying its transcript; recognized
+failed completion events also prevent approval even if the process exits zero.
 SCV still sends Codex and Claude their prompt over stdin and closes the pipe after
 writing it; Agy receives its prompt as an argument with null stdin.
 
@@ -122,6 +127,33 @@ to execute. History retention and validation limits are explained in `scv histor
 actually removed entries; report cleanup failures separately. No spinner runs
 during consent or execution. The executed command's own stdout and stderr remain
 visible after approval. `--yes` and `--no-input` keep their existing semantics.
+
+### Completion statistics
+
+Before approval, both modes show one localized stderr summary with elapsed seconds
+and reported total, input, and output tokens. The monotonic timer starts before
+workspace preparation and stops after validation, excluding the user's approval
+wait, installation or history storage, and execution. Statistics are a view of this
+generation request; they do not change history manifests or machine-readable JSON.
+
+Adapters request these documented event formats:
+
+- [Codex JSONL](https://learn.chatgpt.com/docs/non-interactive-mode): `--json`,
+  using `turn.completed.usage`. Sum completed turns, not individual tool events.
+  Input includes cached tokens and output includes reasoning tokens.
+- [Claude streaming JSON](https://code.claude.com/docs/en/headless):
+  `--output-format stream-json --verbose`, using the root `result` event. Prefer
+  summed `modelUsage` when provided, otherwise use `usage`. Include cache-read and
+  cache-creation counts in input; do not add intermediate assistant messages or
+  cumulative result snapshots. See [Claude usage accounting](https://code.claude.com/docs/en/agent-sdk/cost-tracking).
+- [Agy streaming JSON](https://www.antigravity.google/docs/cli/headless/):
+  `--output-format stream-json`, using `result.usage`. Input and output already
+  include cache reads and thinking; do not add step updates to the final totals.
+
+Missing, malformed, oversized, incomplete, or overflowing usage is shown as
+unavailable, not zero and not an estimate derived from code length. Valid zero usage
+is displayed as zero. These are CLI-reported token counts, not billing or account
+quota figures. Optional usage does not bypass package validation or explicit consent.
 
 ## Implementation choice
 
