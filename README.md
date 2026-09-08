@@ -106,6 +106,8 @@ shebang, or executable bit.
 When the runtime is available, validation checks source syntax without executing
 the command. PowerShell checks also support paths with spaces, Unicode, and shell
 metacharacters; Windows CI exercises this parser boundary with a real `pwsh`.
+Bash validation reads the source from stdin to avoid Windows/POSIX path conversion;
+Windows CI explicitly uses Git Bash and does not depend on a configured WSL distro.
 
 ## Build and development
 

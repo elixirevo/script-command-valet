@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use sha2::{Digest, Sha256};
 
@@ -449,7 +449,15 @@ fn check_syntax(runtime: &str, entry_name: &str, entry: &Path) -> Result<String,
     let mut command = match runtime {
         "bash" => {
             let mut command = Command::new("bash");
-            command.arg("-n").arg(entry);
+            // Native Windows paths are not portable across Bash implementations.
+            // Rust opens the literal path; Bash only parses the source on stdin.
+            let source = fs::File::open(entry).map_err(|error| {
+                format!("could not read '{entry_name}' for syntax check: {error}")
+            })?;
+            command
+                .args(["--noprofile", "--norc", "-n"])
+                .env_remove("BASH_ENV")
+                .stdin(Stdio::from(source));
             command
         }
         "node" => {
@@ -499,9 +507,18 @@ fn check_syntax(runtime: &str, entry_name: &str, entry: &Path) -> Result<String,
         return Ok(format!("{runtime} syntax: {entry_name}"));
     }
     let stderr = String::from_utf8_lossy(&output.stderr);
-    let detail = stderr.trim().chars().take(800).collect::<String>();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let detail = if stderr.trim().is_empty() {
+        stdout.trim()
+    } else {
+        stderr.trim()
+    }
+    .chars()
+    .take(800)
+    .collect::<String>();
     Err(format!(
-        "{runtime} syntax check failed for '{entry_name}': {detail}"
+        "{runtime} syntax check failed for '{entry_name}' ({}): {detail}",
+        output.status
     ))
 }
 
@@ -566,6 +583,33 @@ mod tests {
     use crate::paths::AppPaths;
 
     use super::{install_validated, validate_generated, validate_one_shot};
+
+    #[test]
+    fn bash_syntax_checks_stdin_without_executing_source() {
+        let root = std::env::temp_dir().join(format!(
+            "scv bash 한글 ' [path] $name ; & (literal) {}-{}",
+            std::process::id(),
+            super::nonce()
+        ));
+        fs::create_dir(&root).unwrap();
+        let entry = root.join("main.sh");
+        // Execution would exit 17; -n must parse the entire input without running it.
+        fs::write(&entry, "#!/usr/bin/env bash\nset -euo pipefail\nexit 17\n").unwrap();
+        let check = super::check_syntax("bash", "main.sh", &entry).unwrap();
+        if check.contains("runtime unavailable") {
+            eprintln!("Bash regression check skipped: bash is unavailable");
+            fs::remove_dir_all(root).unwrap();
+            return;
+        }
+        assert_eq!(check, "bash syntax: main.sh");
+        fs::write(&entry, "exit 17\nif then\n").unwrap();
+        let error = super::check_syntax("bash", "main.sh", &entry).unwrap_err();
+        assert!(error.contains("bash syntax check failed"));
+        assert!(error.contains("syntax error"));
+        fs::remove_file(&entry).unwrap();
+        assert!(super::check_syntax("bash", "main.sh", &entry).is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn pwsh_syntax_checks_literal_paths_without_executing_source() {

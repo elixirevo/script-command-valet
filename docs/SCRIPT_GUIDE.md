@@ -202,6 +202,9 @@ Do not mix progress messages or explanatory text into JSON stdout.
 - Syntax checks pass source paths as literal data, including spaces, Unicode, and
   shell metacharacters. PowerShell validation uses its parser without executing
   the source; Windows CI requires `pwsh` so this check cannot silently be skipped.
+- Bash syntax checks read source through a file-backed stdin with startup files
+  disabled; do not pass Windows paths to a POSIX shell or use WSL implicitly.
+  Windows CI explicitly puts Git Bash on PATH before testing all source templates.
 
 ## 6. Input, interaction, and errors
 

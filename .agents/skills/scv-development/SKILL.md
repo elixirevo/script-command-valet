@@ -120,6 +120,8 @@ layout, security boundaries, or external side effects.
   schema rejection, platform resolution, entry confinement, bounds, and syntax checks.
   Exercise PowerShell parsing with literal special-character paths and no source
   execution; Windows CI must have `pwsh` available for this regression coverage.
+  Keep Bash parsing on file-backed stdin with startup files disabled; Windows CI
+  selects Git Bash explicitly instead of assuming the WSL launcher is usable.
 - Generation changes: test adapter translation, embedded resource completeness,
   workspace confinement and cleanup, validator rejection, and isolated installation.
   Do not make a live paid agent request merely for validation.

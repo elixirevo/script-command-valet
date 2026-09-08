@@ -293,6 +293,13 @@ provider state; SCV does not copy that state into the generation workspace.
 
 ## Validation limits
 
+Bash syntax validation opens the literal source path in Rust and connects the file
+to `bash --noprofile --norc -n` on stdin, removing `BASH_ENV` from the child. It
+does not execute source or startup scripts and requires no Windows-to-POSIX path
+conversion. Windows CI selects Git Bash explicitly ahead of the Windows/WSL
+`bash.exe` launcher; all template checks still run. Runtime failures include exit
+status and use stdout diagnostics when stderr is empty.
+
 PowerShell syntax validation passes the source path through a child-only environment
 variable to a fixed `Parser.ParseFile` command. It never appends paths to `-Command`,
 which interprets trailing arguments as PowerShell source rather than `$args`.
