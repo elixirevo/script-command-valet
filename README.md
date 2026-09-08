@@ -1,299 +1,306 @@
-# SCV — Script Command Valet
+<h1 align="center">SCV · Script Command Valet</h1>
 
-SCV is a cross-platform personal command manager and command-building AI unit. It
-exposes Bash, Node.js, Python, PowerShell, and native command packages through one
-`scv <command>` namespace on macOS, Linux, and Windows.
+<p align="center">
+  <strong>Your scripts. One command. AI when you need it.</strong><br>
+  Manage your personal CLI toolkit across macOS, Linux, and Windows.
+</p>
 
-The native Rust core provides dispatch, metadata help, safety discovery, immutable
-activations, Git synchronization, and optional agent-powered package generation.
-AI is never required to run or manage an existing command library.
+<p align="center">
+  <a href="https://github.com/elixirevo/script-command-valet/actions/workflows/ci.yml"><img src="https://github.com/elixirevo/script-command-valet/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="#installation"><img src="https://img.shields.io/badge/status-pre--release-orange" alt="Status: pre-release"></a>
+  <a href="#supported-runtimes"><img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows-blue" alt="Platforms: macOS, Linux, Windows"></a>
+</p>
 
-SCV embeds English and Korean UI catalogs. English is the default; choose Korean
-with `scv config set ui.locale ko`. Human help for native builtins follows that
-setting, while JSON output and user-owned command metadata remain unchanged.
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#ai-commands">AI commands</a> ·
+  <a href="#everyday-workflows">Workflows</a> ·
+  <a href="#documentation">Documentation</a> ·
+  <a href="#contributing">Contributing</a>
+</p>
 
-On the first interactive run, `scv` offers setup for the UI locale, default
-`codex`/`claude`/`agy` create agent, and an optional Git upload remote. The equivalent
-automation-safe form is:
-
-```bash
-scv init --locale ko --agent agy \
-  --remote git@github.com:owner/scv-commands.git \
-  --no-input
-```
-
-Init only initializes local source and Git settings. It does not access the network,
-create the hosted repository, commit, or push.
-
-Run the setup wizard again without replacing the existing command source:
+SCV turns scripts and native binaries into named commands with consistent help,
+inspectable metadata, and Git-backed source. Bring an existing script, ask an agent
+to build a reusable command, or describe a task for a single confirmed run.
 
 ```bash
-scv init --reconfigure
+# Register a script you already own; SCV prompts for its metadata.
+scv add ./my-tool.py --name my-tool
+scv my-tool
+
+# With a local coding agent, describe a task and review it before execution.
+scv "Show the 10 largest files in the current directory"
+
+# Create a command you can reuse after approving its installation.
+scv create "Count files in the current directory" --name file-count
+scv file-count
 ```
 
-Reconfiguration uses the current locale, agent, and Git origin as defaults. Enter a
-new origin to replace it or select removal; use `--no-remote` for the equivalent
-non-interactive operation. Interactive setup uses arrow keys and Enter for language,
-agent, and origin actions, and prompts for text only when a new origin is selected.
-Esc or Ctrl+C cancels before any change. Existing `scv.toml` and command packages
-are preserved, and missing local Git metadata is repaired.
+**AI is optional.** Running and managing existing commands needs no coding agent.
+Generation uses an installed, authenticated `codex`, `claude`, or `agy` CLI.
 
-## Architecture
+## Why SCV?
 
-SCV separates the portable Git source from machine-local executable state.
-
-```text
-~/.scv/                         user-owned Git source
-├── .git/
-├── scv.toml
-└── commands/<command>/
-    ├── metadata.toml
-    └── <implementation files>
-
-             scv apply / validated management operation
-                              ↓
-
-<platform data>/scv/          machine-local runtime state
-├── activations/<id>/
-│   ├── manifest.toml
-│   └── commands/
-├── history/<id>/
-│   ├── manifest.toml
-│   └── package/<command>/
-├── current
-└── state/
-```
-
-SCV never dispatches code directly from the installed user's `~/.scv/commands`
-working tree. It validates every package, copies the full library into a new
-immutable activation, verifies the copy and its SHA-256 digest, and then atomically
-updates `current`. A failed validation leaves the previous activation active.
-
-See [storage architecture](docs/STORAGE_ARCHITECTURE.md),
-[sync architecture](docs/SYNC_ARCHITECTURE.md), and
-[installation](docs/INSTALLATION.md) for the complete contracts.
-
-## Command package
-
-Every external command is a flat package under `~/.scv/commands/<command>/`:
-
-```toml
-name = "path-size"
-category = "filesystem"
-description = "Show the size of a path."
-usage = "scv path-size <path>"
-builtin = false
-risk = "read"
-network = false
-supports_dry_run = false
-effects = ["reads local path metadata", "prints a path size"]
-
-[[implementations]]
-runtime = "bash"
-platforms = ["linux", "macos"]
-entry = "unix.sh"
-
-[[implementations]]
-runtime = "pwsh"
-platforms = ["windows"]
-entry = "windows.ps1"
-```
-
-Metadata owns detailed help and the execution contract. SCV chooses exactly one
-implementation for the current OS; it does not infer runtime from an extension,
-shebang, or executable bit.
-
-When the runtime is available, validation checks source syntax without executing
-the command. PowerShell checks also support paths with spaces, Unicode, and shell
-metacharacters; Windows CI exercises this parser boundary with a real `pwsh`.
-Bash validation reads the source from stdin to avoid Windows/POSIX path conversion;
-Windows CI explicitly uses Git Bash and does not depend on a configured WSL distro.
-On Windows, the validator resolves Bash from absolute PATH entries and excludes the
-Windows directory, preventing an implicit fallback to the WSL launcher.
-
-## Build and development
-
-```bash
-cargo build
-cargo run -- --help
-cargo run -- list --json
-cargo run -- paths --json
-cargo run -- status --json
-```
-
-Required core checks:
-
-```bash
-cargo fmt --check
-cargo test
-cargo clippy --all-targets --all-features -- -D warnings
-```
-
-The CI matrix runs these checks and the native dispatcher on macOS, Linux, and
-Windows. Tagged releases produce native artifacts for:
-
-- macOS Intel and Apple Silicon;
-- Linux x86_64 and arm64; and
-- Windows x86_64.
+- **One place for your tools.** Run Bash, Node.js, Python, PowerShell, and native
+  packages through `scv <command>`.
+- **Help travels with the command.** Package metadata powers `--help`, command
+  discovery, and JSON output for automation.
+- **Create once or run once.** Save generated tools to your library, or keep
+  one-shot tasks in local history for later reruns.
+- **Choose when changes go live.** Validate source into a versioned activation;
+  inspect pending changes and roll back to an earlier activation.
+- **Take your library with you.** Synchronize source through Git, with validated
+  pulls and platform-specific implementations.
 
 ## Installation
 
-Standalone Unix installation defaults to `~/.local/bin/scv`:
+SCV is **pre-release**. Build from source with a current stable Rust toolchain,
+Cargo, Git, and your platform's native build tools:
+
+```bash
+git clone https://github.com/elixirevo/script-command-valet.git
+cd script-command-valet
+cargo build --release --locked
+```
+
+Then install the binary for your platform.
+
+**macOS / Linux**
 
 ```bash
 ./install.sh --binary ./target/release/scv
 ```
 
-Windows defaults to `%LOCALAPPDATA%\Programs\SCV\bin\scv.exe`:
+**Windows PowerShell**
 
 ```powershell
 ./install.ps1 -BinaryPath ./target/release/scv.exe
 ```
 
-See [installation and release](docs/INSTALLATION.md) for download installation,
-custom locations, PATH behavior, package-manager boundaries, and release artifacts.
+Open a new terminal and check `scv --version`. Standalone installers default to
+`~/.local/bin` on macOS/Linux and `%LOCALAPPDATA%\Programs\SCV\bin` on Windows,
+and configure PATH when needed. See the [installation guide](docs/INSTALLATION.md)
+for custom locations, opting out of PATH changes, and release artifacts.
 
-## Paths
+Install only the [runtimes](#supported-runtimes) your commands use. Coding-agent
+CLIs are needed only for [generation](#ai-commands).
 
-Use `scv paths --json` to inspect the resolved paths. Supported overrides are:
+## Quick start
 
-- `SCV_HOME`
-- `SCV_DATA_DIR`
-- `SCV_CONFIG_DIR`
-- `SCV_CACHE_DIR`
-- `SCV_INSTALL_DIR` for installers
-
-There are no older executable names, environment-variable aliases, flat metadata
-formats, or data migration commands. SCV is a pre-release greenfield application.
-
-## Core workflows
+### 1. Set up your library
 
 ```bash
-# Discover commands and safety contracts
-scv list --json
-scv info create --json
-
-# Register a local implementation, update source, and activate it
-scv add ./tool.py \
-  --name tool \
-  --category utility \
-  --description "Run my tool" \
-  --risk read \
-  --network false \
-  --supports-dry-run false \
-  --effect "reads local input" \
-  --no-input
-
-# Validate manual changes and create an activation
-scv apply --dry-run
-scv apply
-scv status --json
-scv rollback --dry-run
-scv rollback
-
-# Synchronize the Git-backed source
-scv sync status --json
-scv sync pull --yes --no-input
-scv sync push --dry-run
-scv sync push --yes --no-input
+scv init
 ```
 
-`sync pull` fetches into an isolated Git worktree, validates the remote source, and
-shows a change summary before approval. Only a fast-forward is accepted. Git and
-`gh` retain ownership of credentials; SCV does not store tokens.
+Choose the UI language, default coding agent, and optional Git remote with the
+arrow keys and Enter. Setup initializes local source and preferences; it does not
+contact a remote, commit, or push. Esc or Ctrl+C cancels before changes are made.
+Running `scv` without arguments also offers setup on the first interactive run.
 
-## Agent-powered creation
+For setup without prompts, use `scv init --no-input`.
 
-Generation logs and source code stay hidden. SCV shows four stages—preparation,
-generation, validation, and approval—with a rotating indicator in the terminal.
-The final summary shows the command description, risk, network use, and effects
-before asking for approval to run a one-shot command or install a persistent one.
-Progress uses `ui.locale` and stderr; redirected logs contain plain stage lines.
-After execution approval, the command's own output appears normally.
+### 2. Add your first command
 
-Before approval, both modes show generation time and CLI-reported token usage, for
-example:
+With Python installed, save this as `hello.py` in a directory outside the SCV
+product checkout:
+
+```python
+print("Hello from SCV!")
+```
+
+Register it with explicit metadata. This command works in Bash, zsh, and PowerShell:
 
 ```text
-Generation complete · 12.3s · Cumulative tokens 12,800 (input 12,000 / output 800)
-Input cache 10,000 / non-cached 2,000 · Tool calls 2
+scv add ./hello.py --name hello --runtime python --category utility --description "Print a greeting" --risk read --network false --supports-dry-run false --effect "prints a greeting" --no-input
 ```
 
-Time covers preparation, generation, and validation; it excludes waiting for approval
-and executing the command. Codex, Claude, and Agy usage is read from their completion
-events. Cumulative input includes context reused across model calls. Codex and
-Claude show cache reads as a subset of input; Claude non-cached input includes cache
-creation. Agy's cache split is unavailable because its inclusion semantics are not
-specified consistently. Tool calls count distinct reported tool operations, not
-model requests. Missing or incomplete metrics appear as unavailable, never zero.
-This summary follows `ui.locale` and stays on stderr with progress.
+SCV leaves the original file unchanged, copies it into your command library, and
+activates the validated package for the current platform.
 
-Both modes instruct the agent to prefer available system tools and the smallest
-correct implementation. A directory disk-usage request should use `du` and `sort`
-with necessary path handling; Python or Node.js is appropriate when it simplifies
-structured data or complex logic. One-shot templates omit mandatory `main` wrappers
-and target the current platform. This guides generation without imposing a line
-limit or changing the selected model.
-
-Compact inline contracts let straightforward requests write metadata and code
-together without first reading templates. Agents skip redundant planning, exploration,
-and validation calls; SCV performs package and syntax validation after generation.
-Templates remain optional references. The one-shot contract is about 46% smaller;
-actual token and time savings depend on the provider and its tool calls.
-
-Generate, inspect, save, and immediately run a one-shot command:
+### 3. Run and inspect it
 
 ```bash
-scv "현재 디렉터리의 큰 파일 10개를 보여줘"
-scv "Count files by extension" --agent claude --yes --no-input
+scv hello
+# Hello from SCV!
+
+scv hello --help
+scv info hello --json
+scv list
+```
+
+Your command is now available from any directory. Use the same workflow for your
+own tools, with metadata that describes their actual inputs and effects.
+
+## AI commands
+
+Install and authenticate one of the supported local CLIs: `codex`, `claude`, or
+`agy`. Select it during setup or pass `--agent` per request. Generation uses that
+provider's existing authentication and may incur provider usage charges.
+
+| Goal | Command | Where it goes |
+| --- | --- | --- |
+| Run a task once | `scv "Count files by extension"` | Machine-local history, after execution consent |
+| Build a reusable tool | `scv create "Count files in the current directory" --name file-count` | Git-backed library, after installation consent |
+| Run a previous task again | `scv history run <id>` | Existing history copy, with fresh consent |
+
+SCV shows preparation, generation, validation, and approval stages. Before consent,
+review the description, declared risk, network use, and effects. Generation time
+and available provider-reported token, cache, and tool-call statistics appear in
+the summary; provider transcripts stay hidden.
+
+```bash
+# Use a specific provider.
+scv "Count files by extension" --agent claude
+
+# Keep a tool for later use. Creation installs it; execution is a separate step.
+scv create "Count files in the current directory" --name file-count --agent codex
+scv file-count
+
+# Find an earlier one-shot task, then rerun it by ID.
 scv history
 scv history run <id>
+```
+
+One-shot runs and history reruns use your **current working directory**. History
+retains the newest 100 entries and stays outside Git synchronization.
+
+<details>
+<summary><strong>Use AI commands without prompts</strong></summary>
+
+```bash
+scv "Count files by extension" --agent claude --yes --no-input
+scv create "Count files in the current directory" --agent codex --yes --no-input
 scv history run <id> --yes --no-input
 ```
 
-SCV never executes an agent's workspace. It validates the zero-input package,
-previews its declared risk, network use, effects, implementation, and syntax checks,
-then asks for consent. After consent it commits a revalidated SHA-256-protected copy
-under machine-local history and executes that copy in the current working directory.
-Every rerun revalidates integrity, uses the caller's current directory, and requires
-fresh consent. The newest 100 entries are retained; history is not added to the Git
-source. The execution question stays concise; a separate notice appears when old
-history entries are actually removed. `scv history --help` explains retention and
-the limits of package and syntax validation.
+`--no-input` disables prompts; `--yes` explicitly grants execution or installation
+consent. Without a terminal, SCV never prompts. See `scv create --help` for model
+and effort options; supported values depend on the selected provider.
 
-Create a persistent reusable command:
+</details>
+
+## Everyday workflows
+
+| Task | Command |
+| --- | --- |
+| Discover commands | `scv list` or `scv list --json` |
+| Inspect a command | `scv info <command> --json` |
+| Read command help | `scv <command> --help` |
+| Preview manual source changes | `scv apply --dry-run` |
+| Activate source changes | `scv apply` |
+| Compare source with the active library | `scv status --json` |
+| Preview / perform a rollback | `scv rollback --dry-run` / `scv rollback` |
+| Inspect resolved storage paths | `scv paths --json` |
+
+### Sync with Git
+
+Configure your command repository's remote during `scv init`, or use
+`scv init --reconfigure` to update it while preserving your source. Create the
+hosted repository separately and commit source changes with Git before syncing;
+SCV does not create commits for you.
 
 ```bash
-scv create "Show directory sizes in descending order" --agent codex
-scv create "Sort a JSON file" --name json-sort --agent codex --effort high
-scv create "Count the number of files" --agent claude --yes --no-input
-scv create "Summarize TOML keys" --agent agy --effort medium
+scv sync status --json
+scv sync pull
+scv sync push --dry-run
+scv sync push
+```
+
+Pull validates the fetched source in an isolated Git worktree and asks for approval
+before accepting a fast-forward update. Push also asks for approval. For automation,
+use `scv sync pull --yes --no-input` or `scv sync push --yes --no-input`.
+See the [sync guide](docs/SYNC_ARCHITECTURE.md) for remote setup and recovery.
+
+### Use Korean
+
+```bash
+scv config set ui.locale ko
+scv "현재 디렉터리의 큰 파일 10개를 보여줘" --locale ko
 scv create "현재 디렉터리의 파일 수를 세어줘" --locale ko --agent agy
 ```
 
-Both generation modes explicitly inject a shared provider-neutral package contract
-plus exactly one embedded mode contract from `assets/generation/`. The workspace
-contains only that mode's metadata and source templates: persistent generation gets
-argument/option/help scaffolding, while one-shot generation gets exact zero-input
-usage and no persistent interaction scaffolding. The selected adapter starts in the
-isolated temporary workspace. Persistent `scv create` consumes only the package under
-`generated/`, validates it, asks for installation consent, writes it to the Git
-source, and creates a new activation.
-Generated descriptions, effects, argument/option help, notes, and runtime messages
-use `--locale`, or `ui.locale` when omitted. Each user package stores that one
-authored language; changing the UI locale later does not rewrite existing commands.
-External utilities retain their native output and diagnostics; the agent must not
-rebuild a utility just to translate its messages.
-See [create architecture](docs/CREATE_ARCHITECTURE.md) for adapter and validation
-boundaries.
+English is the default; English and Korean UI catalogs ship with the binary.
+`--locale` sets the language of newly generated descriptions, help, and authored
+messages, defaulting to `ui.locale`. Existing packages and command identifiers stay
+unchanged. Machine-readable JSON keeps canonical builtin metadata in English.
 
-The `codex`, `claude`, and `agy` adapters invoke their corresponding authenticated
-local CLI. The Agy adapter enforces its sandbox, disables slash-command and skill
-expansion, and supports `low`, `medium`, or `high` effort.
+## How execution works
 
-## Development contract
+Persistent commands pass through validation before becoming runnable:
 
-Read [docs/SCRIPT_GUIDE.md](docs/SCRIPT_GUIDE.md) before changing platform behavior
-or command packages. It is the canonical development guide. Changes to platform
-behavior must keep the guide, relevant architecture documents, affected builtin
-metadata, embedded generation assets, Skill, `AGENTS.md`, README, and CI aligned.
+```text
+Your scripts / generated packages / Git source
+                      │
+                      ▼
+            Validate the complete library
+                      │
+                      ▼
+        Copy and verify a new activation (SHA-256)
+                      │
+                      ▼
+          Switch the current activation atomically
+                      │
+                      ▼
+                 scv <command>
+```
+
+SCV executes persistent commands only from the validated current activation.
+Failed validation leaves the previous activation active. One-shot tasks take a
+separate path: consent, a revalidated history copy, an integrity check, then
+execution. SCV never executes the agent's generation workspace directly.
+
+Validation checks package structure, metadata, integrity, and source syntax when
+the runtime is available. It does **not** verify intended behavior; declared safety
+metadata does not replace your review or consent.
+
+Your portable source lives under `~/.scv` (`%USERPROFILE%\.scv` on Windows).
+Activations, history, preferences, and cache use native platform directories.
+Override them with `SCV_HOME`, `SCV_DATA_DIR`, `SCV_CONFIG_DIR`, and `SCV_CACHE_DIR`.
+See the [storage guide](docs/STORAGE_ARCHITECTURE.md) for the layout and boundaries.
+
+## Supported runtimes
+
+| Package runtime | Required on the target machine |
+| --- | --- |
+| Bash | Bash |
+| Node.js | `node` |
+| Python | `python3` on macOS/Linux; `python` on Windows |
+| PowerShell | PowerShell 7+ (`pwsh`) |
+| Native binary | Executable built for the target OS and CPU |
+
+Each package declares its runtime and supported platforms in `metadata.toml`.
+SCV selects exactly one implementation for the current OS. A package can include
+different implementations for Unix and Windows; cross-platform SCV support does
+not make every script portable. See the [command package guide](docs/SCRIPT_GUIDE.md)
+for the schema, argument help, and platform rules.
+
+## Documentation
+
+| Guide | What you will find |
+| --- | --- |
+| [Platform and command guide](docs/SCRIPT_GUIDE.md) | Canonical behavior, package metadata, runtimes, and validation |
+| [Installation](docs/INSTALLATION.md) | Installer options, PATH, and release artifacts |
+| [Generation](docs/CREATE_ARCHITECTURE.md) | Agent adapters, persistent and one-shot modes, consent, and usage reporting |
+| [Storage](docs/STORAGE_ARCHITECTURE.md) | Source paths, activations, integrity checks, and history |
+| [Git sync](docs/SYNC_ARCHITECTURE.md) | Pull/push requirements, validation, and recovery |
+
+## Contributing
+
+Start with [AGENTS.md](AGENTS.md) and the [development guide](docs/SCRIPT_GUIDE.md).
+Keep personal command packages outside this product repository. For local
+experiments, use an isolated library through the documented path overrides.
+
+```bash
+cargo run -- --help
+cargo run -- list --json
+cargo fmt --check
+cargo test --locked
+cargo clippy --locked --all-targets --all-features -- -D warnings
+cargo build --locked
+```
+
+[CI](https://github.com/elixirevo/script-command-valet/actions/workflows/ci.yml)
+runs native checks on macOS, Linux, and Windows. Found a bug or have a concrete
+workflow to improve? [Open an issue](https://github.com/elixirevo/script-command-valet/issues)
+with your OS, SCV version, reproduction steps, and expected behavior.
