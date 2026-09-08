@@ -296,8 +296,11 @@ provider state; SCV does not copy that state into the generation workspace.
 Bash syntax validation opens the literal source path in Rust and connects the file
 to `bash --noprofile --norc -n` on stdin, removing `BASH_ENV` from the child. It
 does not execute source or startup scripts and requires no Windows-to-POSIX path
-conversion. Windows CI selects Git Bash explicitly ahead of the Windows/WSL
-`bash.exe` launcher; all template checks still run. Runtime failures include exit
+conversion. On Windows, the validator searches absolute PATH directories in order
+for `bash.exe`, excluding directories under `SystemRoot`, and passes the selected
+absolute executable path to Rust. This prevents Rust's system-directory precedence
+from selecting the WSL launcher; no eligible Bash means a skipped check. Windows CI
+puts Git Bash first on PATH; all template checks still run. Runtime failures include exit
 status and use stdout diagnostics when stderr is empty.
 
 PowerShell syntax validation passes the source path through a child-only environment

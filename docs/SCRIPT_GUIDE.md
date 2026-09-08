@@ -205,6 +205,10 @@ Do not mix progress messages or explanatory text into JSON stdout.
 - Bash syntax checks read source through a file-backed stdin with startup files
   disabled; do not pass Windows paths to a POSIX shell or use WSL implicitly.
   Windows CI explicitly puts Git Bash on PATH before testing all source templates.
+- On Windows, Bash syntax validation resolves `bash.exe` to an absolute path in
+  PATH order, excluding relative entries and the Windows directory (`SystemRoot`).
+  It never falls back to Rust's system-directory search or the WSL launcher. If no
+  eligible Bash is installed, report the syntax check as skipped.
 
 ## 6. Input, interaction, and errors
 

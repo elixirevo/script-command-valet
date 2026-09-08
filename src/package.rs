@@ -445,10 +445,51 @@ pub(crate) fn copy_directory_contents(source: &Path, destination: &Path) -> Resu
     Ok(())
 }
 
+#[cfg(not(windows))]
+fn bash_syntax_program() -> Option<PathBuf> {
+    Some(PathBuf::from("bash"))
+}
+
+#[cfg(windows)]
+fn bash_syntax_program() -> Option<PathBuf> {
+    let path = std::env::var_os("PATH")?;
+    let windows_dir = std::env::var_os("SystemRoot").map(PathBuf::from);
+    find_bash_on_path(std::env::split_paths(&path), windows_dir.as_deref())
+}
+
+#[cfg(any(windows, test))]
+fn find_bash_on_path(
+    directories: impl IntoIterator<Item = PathBuf>,
+    windows_dir: Option<&Path>,
+) -> Option<PathBuf> {
+    directories.into_iter().find_map(|directory| {
+        // Do not let Rust's Windows system-directory search override PATH with
+        // the WSL launcher. Also exclude implicit current-directory lookup.
+        if !directory.is_absolute()
+            || windows_dir.is_some_and(|root| {
+                directory.ancestors().any(|parent| {
+                    parent
+                        .to_string_lossy()
+                        .eq_ignore_ascii_case(&root.to_string_lossy())
+                })
+            })
+        {
+            return None;
+        }
+        let program = directory.join("bash.exe");
+        program.is_file().then_some(program)
+    })
+}
+
 fn check_syntax(runtime: &str, entry_name: &str, entry: &Path) -> Result<String, String> {
     let mut command = match runtime {
         "bash" => {
-            let mut command = Command::new("bash");
+            let Some(program) = bash_syntax_program() else {
+                return Ok(format!(
+                    "bash syntax skipped (runtime unavailable): {entry_name}"
+                ));
+            };
+            let mut command = Command::new(program);
             // Native Windows paths are not portable across Bash implementations.
             // Rust opens the literal path; Bash only parses the source on stdin.
             let source = fs::File::open(entry).map_err(|error| {
@@ -583,6 +624,35 @@ mod tests {
     use crate::paths::AppPaths;
 
     use super::{install_validated, validate_generated, validate_one_shot};
+
+    #[test]
+    fn windows_bash_lookup_uses_absolute_path_order_without_wsl_fallback() {
+        let root = std::env::temp_dir().join(format!("scv-bash-lookup-{}", super::nonce()));
+        let windows = root.join("Windows");
+        let system = windows.join("System32");
+        let git = root.join("Program Files/Git/bin");
+        let other = root.join("other/bin");
+        for directory in [&system, &git, &other] {
+            fs::create_dir_all(directory).unwrap();
+            fs::write(directory.join("bash.exe"), b"fixture, never executed").unwrap();
+        }
+        let windows_case_variant = windows.with_file_name("WINDOWS");
+        let lookup = |paths| super::find_bash_on_path(paths, Some(&windows_case_variant));
+        assert_eq!(
+            lookup(vec![system.clone(), git.clone(), other.clone()]),
+            Some(git.join("bash.exe"))
+        );
+        assert_eq!(
+            lookup(vec![other.clone(), git.clone()]),
+            Some(other.join("bash.exe"))
+        );
+        assert_eq!(lookup(vec![system.clone(), "relative".into()]), None);
+        fs::remove_file(git.join("bash.exe")).unwrap();
+        fs::create_dir(git.join("bash.exe")).unwrap();
+        assert_eq!(lookup(vec![git, system]), None);
+        assert_eq!(lookup(vec![]), None);
+        fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn bash_syntax_checks_stdin_without_executing_source() {

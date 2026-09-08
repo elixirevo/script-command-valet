@@ -108,6 +108,8 @@ the command. PowerShell checks also support paths with spaces, Unicode, and shel
 metacharacters; Windows CI exercises this parser boundary with a real `pwsh`.
 Bash validation reads the source from stdin to avoid Windows/POSIX path conversion;
 Windows CI explicitly uses Git Bash and does not depend on a configured WSL distro.
+On Windows, the validator resolves Bash from absolute PATH entries and excludes the
+Windows directory, preventing an implicit fallback to the WSL launcher.
 
 ## Build and development
 

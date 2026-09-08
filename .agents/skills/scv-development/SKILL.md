@@ -122,6 +122,8 @@ layout, security boundaries, or external side effects.
   execution; Windows CI must have `pwsh` available for this regression coverage.
   Keep Bash parsing on file-backed stdin with startup files disabled; Windows CI
   selects Git Bash explicitly instead of assuming the WSL launcher is usable.
+  Resolve Windows validation Bash to an absolute PATH executable, excluding relative
+  entries and SystemRoot; test selection order and absence without WSL fallback.
 - Generation changes: test adapter translation, embedded resource completeness,
   workspace confinement and cleanup, validator rejection, and isolated installation.
   Do not make a live paid agent request merely for validation.
