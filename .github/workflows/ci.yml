@@ -27,10 +27,12 @@ jobs:
           Get-Command pwsh -ErrorAction Stop
           $PSVersionTable.PSVersion.ToString()
           # Prefer Git Bash over the Windows/WSL bash.exe launcher.
-          $gitRoot = Split-Path (Split-Path (Get-Command git -CommandType Application).Source -Parent) -Parent
+          $gitCommand = Get-Command git -CommandType Application -ErrorAction Stop | Select-Object -First 1
+          $gitRoot = Split-Path (Split-Path $gitCommand.Source -Parent) -Parent
           $gitBin = Join-Path $gitRoot 'bin'
           $gitBash = Join-Path $gitBin 'bash.exe'
           if (-not (Test-Path -LiteralPath $gitBash)) { throw "Git Bash not found: $gitBash" }
+          Write-Host "Using Git Bash: $gitBash"
           & $gitBash --version
           if ($LASTEXITCODE -ne 0) { throw 'Git Bash could not start' }
           $gitBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
